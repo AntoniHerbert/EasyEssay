@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Essay - Apresentação</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .active-nav {
+            font-weight: 600;
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+        }
+        .demo-button.active {
+            background-color: #1d4ed8;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header id="header" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="#hero" class="text-2xl font-bold text-blue-600">Easy Essay</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#problema" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300">O Problema</a>
+                        <a href="#objetivo" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300">Objetivo</a>
+                        <a href="#tecnologias" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300">Tecnologias</a>
+                        <a href="#funcionalidades" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300">Funcionalidades</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero" class="min-h-screen flex items-center justify-center bg-white">
+            <div class="text-center p-8">
+                <h1 class="text-5xl md:text-7xl font-extrabold text-gray-900 leading-tight">
+                    <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-teal-500">Easy Essay</span>
+                </h1>
+                <p class="mt-4 text-lg md:text-2xl text-gray-600 max-w-3xl mx-auto">
+                    Correção de Redações com Inteligência Artificial
+                </p>
+            </div>
+        </section>
+
+        <section id="problema" class="py-20 md:py-28">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">O Desafio da Escrita</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Aprimorar a escrita é um desafio universal. Identificamos quatro barreiras principais que estudantes e profissionais enfrentam para obter feedback de qualidade.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <h3 class="text-xl font-semibold mb-2 text-blue-700">Processo Lento</h3>
+                        <p class="text-gray-600">A correção manual é demorada, atrasando o ciclo de aprendizado e a evolução do escritor.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <h3 class="text-xl font-semibold mb-2 text-blue-700">Alto Custo</h3>
+                        <p class="text-gray-600">Contratar corretores particulares pode ser caro e inacessível para muitos, criando uma barreira financeira.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <h3 class="text-xl font-semibold mb-2 text-blue-700">Feedback Limitado</h3>
+                        <p class="text-gray-600">As correções manuais nem sempre oferecem uma análise profunda sobre estilo, clareza e estrutura do texto.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <h3 class="text-xl font-semibold mb-2 text-blue-700">Sobrecarga para Educadores</h3>
+                        <p class="text-gray-600">Professores e corretores lidam com um volume enorme de trabalho, o que pode impactar a qualidade do feedback.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="objetivo" class="py-20 md:py-28 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Nossa Missão</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">O **Easy Essay** nasce com o objetivo de revolucionar o processo de aprendizado da escrita, simplificando e democratizando o acesso à excelência.</p>
+                    <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg max-w-4xl mx-auto">
+                        <p class="text-xl font-medium text-blue-800">
+                            Nossa plataforma utiliza Inteligência Artificial para fornecer uma análise completa e instantânea de redações, permitindo que os usuários aprimorem suas habilidades de forma autônoma, rápida e eficiente. Queremos empoderar cada escritor com as ferramentas certas para alcançar seu potencial máximo.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tecnologias" class="py-20 md:py-28">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Arquitetura Moderna e Robusta</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Para entregar uma experiência fluida e poderosa, escolhemos tecnologias de ponta que garantem performance, escalabilidade e segurança.</p>
+                </div>
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-lg shadow-xl overflow-hidden hidden md:block">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="p-4 font-semibold text-gray-700">Categoria</th>
+                                    <th class="p-4 font-semibold text-gray-700">Tecnologia</th>
+                                    <th class="p-4 font-semibold text-gray-700">Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="p-4 font-semibold text-blue-600">Frontend</td>
+                                    <td class="p-4 font-medium">Angular</td>
+                                    <td class="p-4 text-gray-600">Criação de uma interface de usuário rica, interativa e responsiva.</td>
+                                </tr>
+                                <tr class="border-b hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="p-4 font-semibold text-blue-600">Backend</td>
+                                    <td class="p-4 font-medium">C# (.NET)</td>
+                                    <td class="p-4 text-gray-600">Desenvolvimento de uma API robusta, segura e de alta performance.</td>
+                                </tr>
+                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="p-4 font-semibold text-blue-600">Inteligência Artificial</td>
+                                    <td class="p-4 font-medium">Modelos de Linguagem (LLMs)</td>
+                                    <td class="p-4 text-gray-600">O coração do serviço, responsável pela análise gramatical, estilística e estrutural.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="space-y-4 md:hidden">
+                        <div class="bg-white p-4 rounded-lg shadow-lg">
+                            <p class="font-bold text-blue-600">Frontend</p>
+                            <h4 class="text-lg font-semibold text-gray-800">Angular</h4>
+                            <p class="text-gray-600 mt-1">Criação de uma interface de usuário rica, interativa e responsiva.</p>
+                        </div>
+                         <div class="bg-white p-4 rounded-lg shadow-lg">
+                            <p class="font-bold text-blue-600">Backend</p>
+                            <h4 class="text-lg font-semibold text-gray-800">C# (.NET)</h4>
+                            <p class="text-gray-600 mt-1">Desenvolvimento de uma API robusta, segura e de alta performance.</p>
+                        </div>
+                         <div class="bg-white p-4 rounded-lg shadow-lg">
+                            <p class="font-bold text-blue-600">Inteligência Artificial</p>
+                            <h4 class="text-lg font-semibold text-gray-800">Modelos de Linguagem (LLMs)</h4>
+                            <p class="text-gray-600 mt-1">O coração do serviço, responsável pela análise gramatical, estilística e estrutural.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="funcionalidades" class="py-20 md:py-28 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Funcionalidades Planejadas</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">O Easy Essay foi desenhado para ser uma ferramenta completa de aprimoramento da escrita, com um escopo de funcionalidades focado no usuário.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                    <div class="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800"><span class="text-green-500 mr-2">✅</span>Análise e Correção por IA</h3>
+                        <ul class="list-disc list-inside text-gray-600 space-y-1">
+                            <li>Correção ortográfica e gramatical precisa.</li>
+                            <li>Sugestões para melhorar clareza e coesão.</li>
+                            <li>Análise de estilo e tom da escrita.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800"><span class="text-green-500 mr-2">✅</span>Dashboard do Usuário</h3>
+                        <ul class="list-disc list-inside text-gray-600 space-y-1">
+                            <li>Interface simples para submeter redações.</li>
+                            <li>Visualização clara do texto original e corrigido.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800"><span class="text-green-500 mr-2">✅</span>Relatório de Desempenho</h3>
+                        <ul class="list-disc list-inside text-gray-600 space-y-1">
+                            <li>Pontuação detalhada em múltiplos critérios.</li>
+                            <li>Resumo gerado por IA com pontos de melhoria.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800"><span class="text-green-500 mr-2">✅</span>Histórico de Redações</h3>
+                        <ul class="list-disc list-inside text-gray-600 space-y-1">
+                            <li>Acompanhamento da evolução do usuário.</li>
+                            <li>Acesso a todas as análises anteriores para revisão.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+  
+
+    </main>
+
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h3 class="text-3xl font-bold">Obrigado!</h3>
+            <p class="mt-2 text-lg text-gray-300">Easy Essay - Transformando a escrita através da tecnologia.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('main section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const header = document.getElementById('header');
+            const headerHeight = header.offsetHeight;
+
+            const observerOptions = {
+                root: null,
+                rootMargin: `-${headerHeight}px 0px 0px 0px`,
+                threshold: 0.4
+            };
+
+            const sectionObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        navLinks.forEach(link => {
+                            link.classList.remove('active-nav');
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('active-nav');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                sectionObserver.observe(section);
+            });
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        const elementPosition = targetElement.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
+                        
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: "smooth"
+                        });
+                    }
+                });
+            });
+
+            const demoButtons = document.querySelectorAll('.demo-button');
+            const demoImage = document.getElementById('demo-image');
+            const demoImages = [
+                'http://googleusercontent.com/file_content/1',
+                'http://googleusercontent.com/file_content/2',
+                'http://googleusercontent.com/file_content/0'
+            ];
+
+            demoButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const step = button.dataset.step;
+                    
+                    demoImage.style.opacity = 0;
+
+                    setTimeout(() => {
+                        demoImage.src = demoImages[step];
+                        demoImage.style.opacity = 1;
+                    }, 300);
+
+                    demoButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
