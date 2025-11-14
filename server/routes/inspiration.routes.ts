@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage"; 
+import { inspirationStore } from "../storage/"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
 
 const router = Router();
@@ -15,7 +16,7 @@ const router = Router();
  */
 router.get("/", catchAsync(async (req, res) => {
   const { category, type } = req.query;
-  const inspirations = await storage.getInspirations(
+  const inspirations = await inspirationStore.getInspirations(
     category as string,
     type as string
   );
@@ -26,7 +27,7 @@ router.get("/", catchAsync(async (req, res) => {
  * Busca uma inspiração específica pelo ID.
  */
 router.get("/:id", catchAsync(async (req, res) => {
-  const inspiration = await storage.getInspiration(req.params.id);
+  const inspiration = await inspirationStore.getInspiration(req.params.id);
   if (!inspiration) {
     return res.status(404).json({ message: "Inspiration not found" });
   }

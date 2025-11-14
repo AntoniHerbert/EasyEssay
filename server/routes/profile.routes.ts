@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage"; 
+import { profileStore } from "../storage/"; 
 import { insertUserProfileSchema } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
 import { isAuthenticated } from "./middlewares/isAuthenticated"; 
@@ -15,7 +16,7 @@ const router = Router();
  * Qualquer pessoa (logada ou não) pode ver o perfil de outro usuário.
  */
 router.get("/:userId", catchAsync(async (req, res) => {
-  const profile = await storage.getUserProfile(req.params.userId);
+  const profile = await profileStore.getUserProfile(req.params.userId);
   if (!profile) {
     return res.status(404).json({ message: "Profile not found" });
   }
@@ -59,7 +60,7 @@ router.post("/", catchAsync(async (req, res) => {
   //   return res.status(400).json({ message: "Profile already exists." });
   // }
 
-  const profile = await storage.createUserProfile(profileData);
+  const profile = await profileStore.createUserProfile(profileData);
   res.status(201).json(profile);
 }));
 
@@ -84,7 +85,7 @@ router.put("/:userId", catchAsync(async (req, res) => {
   }
 
   const updates = insertUserProfileSchema.partial().parse(req.body);
-  const profile = await storage.updateUserProfile(req.params.userId, updates);
+  const profile = await profileStore.updateUserProfile(req.params.userId, updates);
 
   if (!profile) {
     return res.status(404).json({ message: "Profile not found" });
