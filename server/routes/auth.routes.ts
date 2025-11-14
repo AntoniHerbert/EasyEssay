@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage"; 
+import { userStore, profileStore } from "../storage/"; 
 import { hashPassword, verifyPassword } from "../auth"; 
 import { catchAsync } from "./middlewares/errorHandler";
 import { isAuthenticated } from "./middlewares/isAuthenticated";
@@ -13,15 +14,15 @@ router.post("/signup", catchAsync(async (req, res) => {
     return res.status(400).json({ message: "Username, password, and display name are required" });
   }
   
-  const existingUser = await storage.getUserByUsername(username);
+  const existingUser = await userStore.getUserByUsername(username);
   if (existingUser) {
     return res.status(400).json({ message: "Username already taken" });
   }
 
   const passwordHash = await hashPassword(password);
-  const user = await storage.createUser({ username, passwordHash });
+  const user = await userStore.createUser({ username, passwordHash });
 
-  await storage.createUserProfile({
+  await profileStore.createUserProfile({
     userId: user.id,
     username,
     displayName,
@@ -38,7 +39,7 @@ router.post("/login", catchAsync(async (req, res) => {
     return res.status(400).json({ message: "Username and password are required" });
   }
 
-  const user = await storage.getUserByUsername(username);
+  const user = await userStore.getUserByUsername(username);
   if (!user) {
     return res.status(401).json({ message: "Invalid username or password" });
   }

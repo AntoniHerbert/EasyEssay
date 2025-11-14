@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage"; 
+import { peerReviewStore } from "../storage/"; 
 import { insertPeerReviewSchema, correctionSchema } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
 import { isAuthenticated } from "./middlewares/isAuthenticated"; 
@@ -30,8 +31,7 @@ router.patch("/:id", catchAsync(async (req, res) => {
   // }
   
   const updates = insertPeerReviewSchema.partial().parse(req.body);
-  const review = await storage.updatePeerReview(reviewId, updates);
-  
+  const review = await peerReviewStore.updatePeerReview(req.params.id, updates);  
   if (!review) {
     return res.status(404).json({ message: "Review not found" });
   }
@@ -45,7 +45,7 @@ router.patch("/:id", catchAsync(async (req, res) => {
 router.post("/:id/corrections", catchAsync(async (req, res) => {
   const reviewId = req.params.id;
 
-  const existingReview = await storage.getPeerReviewById(reviewId);
+  const existingReview = await peerReviewStore.getPeerReviewById(reviewId); 
   if (!existingReview) {
     return res.status(404).json({ message: "Review not found" });
   }
@@ -61,8 +61,7 @@ router.post("/:id/corrections", catchAsync(async (req, res) => {
   }
 
   const correctionData = correctionSchema.parse(req.body);
-  const review = await storage.addCorrectionToReview(reviewId, correctionData);
-  
+  const review = await peerReviewStore.addCorrectionToReview(reviewId, correctionData);   
   if (!review) {
     return res.status(404).json({ message: "Review not found after attempting to add correction" });
   }

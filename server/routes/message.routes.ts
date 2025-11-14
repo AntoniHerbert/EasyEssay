@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage"; 
+import { messageStore } from "../storage/"; 
 import { insertUserMessageSchema } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
 import { isAuthenticated } from "./middlewares/isAuthenticated"; 
@@ -26,7 +27,7 @@ router.get("/:userId", catchAsync(async (req, res) => {
   }
 
   const { unreadOnly } = req.query;
-  const messages = await storage.getUserMessages(
+  const messages = await messageStore.getUserMessages(
     req.params.userId,
     unreadOnly === "true"
   );
@@ -47,7 +48,7 @@ router.post("/", catchAsync(async (req, res) => {
     return res.status(400).json({ message: "You cannot send a message to yourself" });
   }
 
-  const message = await storage.createUserMessage({
+  const message = await messageStore.createUserMessage({
     ...messageData,
     fromUserId: req.session.userId!, 
   });
@@ -71,7 +72,7 @@ router.patch("/:id/read", catchAsync(async (req, res) => {
   //   return res.status(403).json({ message: "Forbidden: You can only mark your own messages as read" });
   // }
 
-  const message = await storage.markMessageAsRead(req.params.id);
+  const message = await messageStore.markMessageAsRead(req.params.id);
   if (!message) {
     return res.status(440).json({ message: "Message not found" });
   }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage"; 
+import { friendshipStore } from "../storage/"; 
 import { insertFriendshipSchema } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
 import { isAuthenticated } from "./middlewares/isAuthenticated"; 
