@@ -1,5 +1,11 @@
 import { Router } from "express";
-import { storage } from "../storage"; 
+import {
+  essayStore, 
+  profileStore,
+  peerReviewStore, 
+  essayLikeStore, 
+  userCorrectionStore
+} from "../storage/index"
 import { getMockAIReview } from "../services/mock-analysis"; 
 import { 
   insertEssaySchema, 
@@ -22,7 +28,7 @@ const router = Router();
  */
 router.get("/", catchAsync(async (req, res) => {
   const { isPublic, authorId } = req.query;
-  const essays = await storage.getEssays(
+  const essays = await essayStore.getEssays(
     isPublic === "true" ? true : isPublic === "false" ? false : undefined,
     authorId as string
   );
@@ -33,7 +39,7 @@ router.get("/", catchAsync(async (req, res) => {
  * Busca uma redação específica pelo ID.
  */
 router.get("/:id", catchAsync(async (req, res) => {
-  const essay = await storage.getEssay(req.params.id);
+  const essay = await essayStore.getEssay(req.params.id);
   if (!essay) {
     return res.status(404).json({ message: "Essay not found" });
   }
@@ -44,7 +50,7 @@ router.get("/:id", catchAsync(async (req, res) => {
  * Busca as correções manuais de uma redação.
  */
 router.get("/:id/user-corrections", catchAsync(async (req, res) => {
-  const userCorrections = await storage.getUserCorrections(req.params.id);
+  const userCorrections = await userCorrectionStore.getUserCorrections(req.params.id);
   res.json(userCorrections);
 }));
 
@@ -52,7 +58,7 @@ router.get("/:id/user-corrections", catchAsync(async (req, res) => {
  * Busca a contagem de "likes" de uma redação.
  */
 router.get("/:id/likes", catchAsync(async (req, res) => {
-  const likes = await storage.getEssayLikes(req.params.id);
+  const likes = await essayLikeStore.getEssayLikes(req.params.id);
   res.json({ count: likes.length });
 }));
 
@@ -60,7 +66,7 @@ router.get("/:id/likes", catchAsync(async (req, res) => {
  * Busca todas as revisões (peer reviews) de uma redação.
  */
 router.get("/:essayId/peer-reviews", catchAsync(async (req, res) => {
-  const reviews = await storage.getPeerReviews(req.params.essayId);
+  const reviews = await peerReviewStore.getPeerReviews(req.params.essayId);
   res.json(reviews);
 }));
 
@@ -76,13 +82,13 @@ router.use(isAuthenticated);
  * Cria uma nova redação.
  */
 router.post("/", catchAsync(async (req, res) => {
-  const userProfile = await storage.getUserProfile(req.session.userId!);
+  const userProfile = await profileStore.getUserProfile(req.session.userId!);
   
   const essayData = insertEssaySchema.omit({ authorId: true, authorName: true }).parse(req.body);
   
   const wordCount = essayData.content.trim().split(/\s+/).filter(word => word.length > 0).length;
   
-  const essay = await storage.createEssay({
+  const essay = await essayStore.createEssay({
     ...essayData,
     authorId: req.session.userId!,
     authorName: userProfile?.displayName || "Anonymous",
@@ -96,7 +102,7 @@ router.post("/", catchAsync(async (req, res) => {
       const aiReview = getMockAIReview(essay.title, essay.content);
       console.log(`[Auto-Analysis] Generated mock AI review with ${aiReview.corrections.length} corrections`);
       
-      await storage.createPeerReview({
+      await peerReviewStore.createPeerReview({
         essayId: essay.id,
         reviewerId: "AI",
         grammarScore: aiReview.grammarScore,
@@ -110,7 +116,7 @@ router.post("/", catchAsync(async (req, res) => {
         isSubmitted: true,
       });
       
-      await storage.updateEssay(essay.id, { isAnalyzed: true });
+      await essayStore.updateEssay(essay.id, { isAnalyzed: true });
     } catch (aiError) {
       console.error(`Failed to auto-analyze essay ${essay.id}:`, aiError);
       // Não falha a requisição principal, apenas registra o erro
@@ -136,7 +142,7 @@ router.put("/:id", catchAsync(async (req, res) => {
     updates.wordCount = updates.content.trim().split(/\s+/).filter(word => word.length > 0).length;
   }
   
-  const updatedEssay = await storage.updateEssay(req.params.id, updates);
+  const updatedEssay = await essayStore.updateEssay(req.params.id, updates);
   if (!updatedEssay) {
     return res.status(404).json({ message: "Essay not found" });
   }
@@ -148,7 +154,7 @@ router.put("/:id", catchAsync(async (req, res) => {
  */
 router.delete("/:id", catchAsync(async (req, res) => {
   // TODO: Adicionar verificação de propriedade
-  const deleted = await storage.deleteEssay(req.params.id);
+  const deleted = await essayStore.deleteEssay(req.params.id);
   if (!deleted) {
     return res.status(404).json({ message: "Essay not found" });
   }
@@ -160,11 +166,11 @@ router.delete("/:id", catchAsync(async (req, res) => {
  */
 router.post("/batch-analyze", catchAsync(async (req, res) => {
   // TODO: Esta rota deveria ser protegida por um middleware 'isAdmin'
-  const allEssays = await storage.getEssays(true); // Apenas públicas
+  const allEssays = await essayStore.getEssays(true); // Apenas públicas
   const analyzedCount = { success: 0, failed: 0, skipped: 0 };
   
   for (const essay of allEssays) {
-    const existingAIReview = await storage.getPeerReview(essay.id, "AI");
+    const existingAIReview = await peerReviewStore.getPeerReview(essay.id, "AI");
     if (existingAIReview) {
       analyzedCount.skipped++;
       continue;
@@ -173,7 +179,7 @@ router.post("/batch-analyze", catchAsync(async (req, res) => {
     try {
       const aiReview = getMockAIReview(essay.title, essay.content);
       
-      await storage.createPeerReview({
+      await peerReviewStore.createPeerReview({
         essayId: essay.id,
         reviewerId: "AI",
         grammarScore: aiReview.grammarScore,
@@ -187,7 +193,7 @@ router.post("/batch-analyze", catchAsync(async (req, res) => {
         isSubmitted: true,
       });
       
-      await storage.updateEssay(essay.id, { isAnalyzed: true });
+      await essayStore.updateEssay(essay.id, { isAnalyzed: true });
       analyzedCount.success++;
     } catch (error) {
       console.error(`Failed to analyze essay ${essay.id}:`, error);
@@ -206,7 +212,7 @@ router.post("/batch-analyze", catchAsync(async (req, res) => {
  * (Re)Inicia a análise de IA para uma redação específica.
  */
 router.post("/:id/analyze", catchAsync(async (req, res) => {
-  const essay = await storage.getEssay(req.params.id);
+  const essay = await essayStore.getEssay(req.params.id);
   if (!essay) {
     return res.status(404).json({ message: "Essay not found" });
   }
@@ -215,10 +221,10 @@ router.post("/:id/analyze", catchAsync(async (req, res) => {
 
   const aiReview = getMockAIReview(essay.title, essay.content);
 
-  const existingAIReview = await storage.getPeerReview(essay.id, "AI");
+  const existingAIReview = await peerReviewStore.getPeerReview(essay.id, "AI");
   if (existingAIReview) {
     // Se já existe, atualiza
-    const updatedReview = await storage.updatePeerReview(existingAIReview.id, {
+    const updatedReview = await peerReviewStore.updatePeerReview(existingAIReview.id, {
       grammarScore: aiReview.grammarScore,
       styleScore: aiReview.styleScore,
       clarityScore: aiReview.clarityScore,
@@ -229,12 +235,12 @@ router.post("/:id/analyze", catchAsync(async (req, res) => {
       corrections: aiReview.corrections,
     });
     
-    await storage.updateEssay(essay.id, { isAnalyzed: true });
+    await essayStore.updateEssay(essay.id, { isAnalyzed: true });
     return res.json(updatedReview);
   }
 
   // Se não existe, cria
-  const aiPeerReview = await storage.createPeerReview({
+  const aiPeerReview = await peerReviewStore.createPeerReview({
     essayId: essay.id,
     reviewerId: "AI",
     grammarScore: aiReview.grammarScore,
@@ -248,7 +254,7 @@ router.post("/:id/analyze", catchAsync(async (req, res) => {
     isSubmitted: true, 
   });
 
-  await storage.updateEssay(essay.id, { isAnalyzed: true });
+  await essayStore.updateEssay(essay.id, { isAnalyzed: true });
   res.json(aiPeerReview);
 }));
 
@@ -263,7 +269,7 @@ router.post("/:id/user-corrections", catchAsync(async (req, res) => {
     // userId: req.session.userId! 
   });
   
-  const userCorrection = await storage.createUserCorrection(correctionData);
+  const userCorrection = await userCorrectionStore.createUserCorrection(correctionData);
   res.status(201).json(userCorrection);
 }));
 
@@ -274,13 +280,13 @@ router.post("/:id/like", catchAsync(async (req, res) => {
   const userId = req.session.userId!;
   const essayId = req.params.id;
 
-  const isLiked = await storage.isEssayLiked(essayId, userId);
+  const isLiked = await essayLikeStore.isEssayLiked(essayId, userId);
   
   if (isLiked) {
-    await storage.deleteEssayLike(essayId, userId);
+    await essayLikeStore.deleteEssayLike(essayId, userId);
     res.json({ liked: false });
   } else {
-    await storage.createEssayLike({
+    await essayLikeStore.createEssayLike({
       essayId: essayId,
       userId,
     });
@@ -295,7 +301,7 @@ router.post("/:essayId/peer-reviews", catchAsync(async (req, res) => {
   const reviewerId = req.session.userId!;
   const { essayId } = req.params;
   
-  const essay = await storage.getEssay(essayId);
+  const essay = await essayStore.getEssay(essayId);
   if (!essay) {
     return res.status(404).json({ message: "Essay not found" });
   }
@@ -304,7 +310,7 @@ router.post("/:essayId/peer-reviews", catchAsync(async (req, res) => {
     return res.status(403).json({ message: "You cannot review your own essay" });
   }
   
-  const existingReview = await storage.getPeerReview(essayId, reviewerId);
+  const existingReview = await peerReviewStore.getPeerReview(essayId, reviewerId);
   if (existingReview) {
     // Se o usuário já começou uma revisão, apenas retorna a existente
     return res.json(existingReview);
@@ -315,7 +321,7 @@ router.post("/:essayId/peer-reviews", catchAsync(async (req, res) => {
     reviewerId,
     essayId: essayId
   });
-  const review = await storage.createPeerReview(reviewData);
+  const review = await peerReviewStore.createPeerReview(reviewData);
   res.status(201).json(review);
 }));
 

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { storage } from "../storage"; 
 import { friendshipStore } from "../storage/"; 
 import { insertFriendshipSchema } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
@@ -26,7 +25,7 @@ router.get("/:userId", catchAsync(async (req, res) => {
   // }
   
   const { status } = req.query;
-  const friendships = await storage.getFriendships(
+  const friendships = await friendshipStore.getFriendships(
     req.params.userId,
     status as string
   );
@@ -49,7 +48,7 @@ router.post("/", catchAsync(async (req, res) => {
 
   // TODO: Verificar se já existe uma amizade ou pedido pendente
   
-  const friendship = await storage.createFriendship({
+  const friendship = await friendshipStore.createFriendship({
     ...friendshipData,
     requesterId: req.session.userId!,
   });
@@ -75,7 +74,7 @@ router.put("/:id", catchAsync(async (req, res) => {
   // }
 
   const updates = insertFriendshipSchema.partial().parse(req.body);
-  const friendship = await storage.updateFriendship(req.params.id, updates);
+  const friendship = await friendshipStore.updateFriendship(req.params.id, updates);
 
   if (!friendship) {
     return res.status(404).json({ message: "Friendship not found" });

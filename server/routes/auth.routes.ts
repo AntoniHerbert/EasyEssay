@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { storage } from "../storage"; 
 import { userStore, profileStore } from "../storage/"; 
 import { hashPassword, verifyPassword } from "../auth"; 
 import { catchAsync } from "./middlewares/errorHandler";
@@ -64,7 +63,7 @@ router.post("/logout", (req, res) => {
 
 
 router.get("/me", isAuthenticated, catchAsync(async (req, res) => {
-  const user = await storage.getUser(req.session.userId!); 
+  const user = await userStore.getUser(req.session.userId!); 
   if (!user) {
     // Isso pode acontecer se o usuário for deletado enquanto logado
     req.session.destroy(() => {});
