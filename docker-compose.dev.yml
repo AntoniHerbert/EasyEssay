@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: EasyEssayDev
+    ports:
+      - "5000:5000"
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:postgres@host.docker.internal:5432/EasyEssay_db
+      - SESSION_SECRET=dev-secret
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HOST=0.0.0.0
+      - VITE_PORT=5173
+    volumes:
+      - .:/app
+      - /app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -250,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
       
-        await storage.updateEssay(essay.id, { isAnalyzed: true });
+        await storage.updateEssay(essay.id, { isAnalyzed: true, isPublic: true } );
         
         return res.json(updatedReview);
       }
@@ -647,6 +647,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  return app;
 }

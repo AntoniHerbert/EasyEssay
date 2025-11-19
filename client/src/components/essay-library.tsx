@@ -6,14 +6,15 @@ import { Input } from "@/components/ui/input";
 import { type Essay } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Edit, Share, MoreVertical, Check, Clock, Globe, FileText } from "lucide-react";
+import { Search, Plus, Edit, Share, MoreVertical, Check, Clock, Globe, FileText, Eye, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
 interface EssayLibraryProps {
   onEditEssay?: (essayId: string) => void;
+  onViewEssay?: (essayId: string) => void;
 }
 
-export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
+export function EssayLibrary({ onEditEssay , onViewEssay}: EssayLibraryProps) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -47,7 +48,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       return apiRequest("DELETE", `/api/essays/${essayId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/essays?authorId=${user?.id}`] });
       toast({
         title: "Essay deleted",
         description: "The essay has been deleted successfully.",
@@ -201,7 +202,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                     {essay.title}
                   </h3>
                   <div className="flex items-center space-x-1">
-                    <Button
+                      {/*<Button
                       variant="ghost"
                       size="sm"
                       className="h-auto p-1"
@@ -214,7 +215,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                     >
                       <Share className="w-4 h-4" />
                     </Button>
-                    {/*
+                  
                     <Button
                       variant="ghost"
                       size="sm"
@@ -223,6 +224,21 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                     >
                       <MoreVertical className="w-4 h-4" />
                     </Button> */}
+                    <Button
+                    variant="ghost" 
+                    size="sm"       
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 px-2"
+                    disabled={deleteEssayMutation.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation(); 
+                      if (window.confirm("Are you sure you want to delete this essay? This action cannot be undone.")) {
+                        deleteEssayMutation.mutate(essay.id);
+                      }
+                    }}
+                    data-testid={`button-delete-${essay.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                   </div>
                 </div>
                 
@@ -239,15 +255,15 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                   <div className="flex items-center space-x-3">
                     {getStatusBadge(essay)}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEditEssay?.(essay.id)}
-                    data-testid={`button-edit-${essay.id}`}
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
+                    {( essay.isAnalyzed) ? (
+                      <Button variant="secondary" onClick={() => onViewEssay?.(essay.id)}>
+                        <Eye className="w-4 h-4 mr-1" /> View
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" onClick={() => onEditEssay?.(essay.id)}>
+                        <Edit className="w-4 h-4 mr-1" /> Edit
+                      </Button>
+                    )}
                 </div>
               </CardContent>
             </Card>

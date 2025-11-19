@@ -5,8 +5,13 @@ import pkg from "pg";
 const { Pool } = pkg;
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import http from "http"; 
+import path from "path"; 
+import fs from "fs"; 
 
 const app = express();
+const server = http.createServer(app); 
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -63,8 +68,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
 
+
+
+  let vite;
+
+  if (app.get("env") === "development") {
+    vite = await setupVite(app, server); 
+  }
+
+  registerRoutes(app);
+  
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -73,9 +87,26 @@ app.use((req, res, next) => {
     throw err;
   });
 
+if (app.get("env") === "development") {
+    if (!vite) throw new Error("Vite server não foi inicializado.");
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
+    app.use("*", async (req, res, next) => { 
+      const url = req.originalUrl;
+      try {
+        const clientTemplate = path.resolve(
+          import.meta.dirname, 
+          "..",                 
+          "client",             
+          "index.html",
+        );
+        let template = await fs.promises.readFile(clientTemplate, "utf-8");
+        const page = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     serveStatic(app);
   }

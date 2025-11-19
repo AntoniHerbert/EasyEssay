@@ -1,0 +1,22 @@
+# Node completo (não alpine, pq hot reload + vite + tsx precisam de libs)
+FROM node:20
+
+WORKDIR /app
+
+# Copiar package.json
+COPY package*.json ./
+
+# Instalar dependências completas
+RUN npm install
+
+# Copiar tudo
+COPY . .
+
+# Permite que o container veja mudanças do host (Windows)
+ENV CHOKIDAR_USEPOLLING=true
+
+EXPOSE 5000
+EXPOSE 5173
+
+# Comando para rodar o servidor em modo dev
+CMD ["npm", "run", "dev"]

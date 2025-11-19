@@ -374,7 +374,7 @@ export default function EssayDetail() {
             <CardContent className="p-6">
               <div 
                 id="essay-content"
-                className="prose dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap cursor-text"
+                className="prose dark:prose-invert max-w-none break-words leading-relaxed whitespace-pre-wrap cursor-text"
                 onMouseUp={handleTextSelection}
                 data-testid="essay-content"
               >
@@ -546,7 +546,7 @@ export default function EssayDetail() {
                       {selectedText && (
                         <div className="p-3 bg-muted rounded-lg">
                           <div className="text-sm font-medium mb-1">Selected Text:</div>
-                          <div className="text-sm italic">"{selectedText}"</div>
+                          <div className="text-sm break-words italic">"{selectedText}"</div>
                         </div>
                       )}
                       

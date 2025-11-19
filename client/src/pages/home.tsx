@@ -9,11 +9,13 @@ import { MobileNavigation } from "@/components/mobile-navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { type Essay } from "@shared/schema";
 import { FileText, Folder, Users, User, Lightbulb } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState("write");
   const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
   const [editingEssayId, setEditingEssayId] = useState<string>("");
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const navigateToMessages = localStorage.getItem('navigateToMessages');
@@ -35,6 +37,10 @@ export default function Home() {
     setActiveSection("write");
   };
 
+  const handleViewEssay = (essayId: string) => {
+  setLocation(`/essay/${essayId}`);
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case "write":
@@ -47,7 +53,7 @@ export default function Home() {
           </div>
         );
       case "library":
-        return <EssayLibrary onEditEssay={handleEditEssay} />;
+        return <EssayLibrary onEditEssay={handleEditEssay} onViewEssay={handleViewEssay} />;
       case "inspirations":
         return <InspirationsFeed />;
       case "community":

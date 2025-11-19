@@ -275,11 +275,11 @@ export function CommunityFeed() {
           })}
           
           {/* Load More Button */}
-          <div className="text-center">
+         {/*} <div className="text-center">
             <Button variant="secondary" size="lg" data-testid="button-load-more">
               Load More Essays
             </Button>
-          </div>
+          </div>*/}
         </div>
       )}
     </div>
