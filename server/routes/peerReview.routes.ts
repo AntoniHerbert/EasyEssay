@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { peerReviewStore } from "../storage/"; 
 import { insertPeerReviewSchema, correctionSchema } from "@shared/schema"; 
+import { peerReviewService } from "server/services/peerReview.service";
 import { catchAsync } from "./middlewares/errorHandler"; 
 import { isAuthenticated } from "./middlewares/isAuthenticated"; 
 
@@ -17,24 +18,22 @@ router.use(isAuthenticated);
  * (ex: adicionar notas, submeter a revisão).
  */
 router.patch("/:id", catchAsync(async (req, res) => {
-  const reviewId = req.params.id;
-  
-  // TODO: VERIFICAÇÃO DE SEGURANÇA CRÍTICA!
-  // Apenas o usuário que criou a revisão (reviewerId) deve poder atualizá-la.
-  // const reviewToUpdate = await storage.getPeerReviewById(reviewId);
-  // if (!reviewToUpdate) {
-  //   return res.status(404).json({ message: "Review not found" });
-  // }
-  // if (reviewToUpdate.reviewerId !== req.session.userId) {
-  //   return res.status(403).json({ message: "Forbidden: You cannot edit this review" });
-  // }
-  
-  const updates = insertPeerReviewSchema.partial().parse(req.body);
-  const review = await peerReviewStore.updatePeerReview(req.params.id, updates);  
-  if (!review) {
-    return res.status(404).json({ message: "Review not found" });
-  }
-  res.json(review);
+  try {
+      const review = await peerReviewService.updateReview(
+        req.params.id,
+        req.session.userId!,
+        req.body
+      );
+      res.json(review);
+    } catch (error: any) {
+      if (error.message === "REVIEW_NOT_FOUND") {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      if (error.message === "FORBIDDEN_ACCESS") {
+        return res.status(403).json({ message: "Forbidden: You cannot edit this review" });
+      }
+      throw error;
+    }
 }));
 
 /**
@@ -42,29 +41,25 @@ router.patch("/:id", catchAsync(async (req, res) => {
  * que ainda não foi submetida.
  */
 router.post("/:id/corrections", catchAsync(async (req, res) => {
-  const reviewId = req.params.id;
-
-  const existingReview = await peerReviewStore.getPeerReviewById(reviewId); 
-  if (!existingReview) {
-    return res.status(404).json({ message: "Review not found" });
-  }
-
-  // TODO: VERIFICAÇÃO DE SEGURANÇA CRÍTICA!
-  // Apenas o 'reviewerId' pode adicionar correções à sua própria revisão.
-  // if (existingReview.reviewerId !== req.session.userId) {
-  //   return res.status(403).json({ message: "Forbidden: You cannot add corrections to this review" });
-  // }
-
-  if (existingReview.isSubmitted) {
-    return res.status(400).json({ message: "Cannot add corrections to a submitted review" });
-  }
-
-  const correctionData = correctionSchema.parse(req.body);
-  const review = await peerReviewStore.addCorrectionToReview(reviewId, correctionData);   
-  if (!review) {
-    return res.status(404).json({ message: "Review not found after attempting to add correction" });
-  }
-  res.json(review);
+  try {
+      const review = await peerReviewService.addCorrection(
+        req.params.id,
+        req.session.userId!,
+        req.body
+      );
+      res.json(review);
+    } catch (error: any) {
+      if (error.message === "REVIEW_NOT_FOUND") {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      if (error.message === "FORBIDDEN_ACCESS") {
+        return res.status(403).json({ message: "Forbidden: You cannot add corrections to this review" });
+      }
+      if (error.message === "REVIEW_ALREADY_SUBMITTED") {
+        return res.status(400).json({ message: "Cannot add corrections to a submitted review" });
+      }
+      throw error;
+    }
 }));
 
 export default router;

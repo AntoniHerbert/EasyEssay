@@ -1,15 +1,11 @@
 import { Router } from "express";
-import {
-  essayStore, 
-  profileStore,
-  peerReviewStore, 
-  essayLikeStore, 
-  userCorrectionStore
-} from "../storage/index"
-import { getMockAIReview } from "../services/mock-analysis"; 
+import { essayService } from "../services/essay.service"; 
+import { userCorrectionService } from "../services/userCorrection.service";
+import { essayLikeService } from "../services/essayLike.service"; 
+import { peerReviewService } from "../services/peerReview.service";
+import { aiService } from "../services/ai.service";
+
 import { 
-  insertEssaySchema, 
-  insertUserCorrectionSchema, 
   insertPeerReviewSchema 
 } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler";
@@ -18,143 +14,63 @@ import { isAuthenticated } from "./middlewares/isAuthenticated";
 const router = Router();
 
 // =================================================================
-// 🚀 Rotas Públicas (Não exigem login)
+// 🚀 Rotas Públicas
 // =================================================================
 
-/**
- * Busca uma lista de redações com base em filtros.
- * @query isPublic {boolean} Filtra por redações públicas/privadas.
- * @query authorId {string} Filtra por ID do autor.
- */
 router.get("/", catchAsync(async (req, res) => {
   const { isPublic, authorId } = req.query;
-  const essays = await essayStore.getEssays(
-    isPublic === "true" ? true : isPublic === "false" ? false : undefined,
-    authorId as string
-  );
+  const essays = await essayService.getEssays(isPublic as string, authorId as string);
   res.json(essays);
 }));
 
-/**
- * Busca uma redação específica pelo ID.
- */
 router.get("/:id", catchAsync(async (req, res) => {
-  const essay = await essayStore.getEssay(req.params.id);
+  const essay = await essayService.getEssayById(req.params.id);
   if (!essay) {
     return res.status(404).json({ message: "Essay not found" });
   }
   res.json(essay);
 }));
 
-/**
- * Busca as correções manuais de uma redação.
- */
 router.get("/:id/user-corrections", catchAsync(async (req, res) => {
-  const userCorrections = await userCorrectionStore.getUserCorrections(req.params.id);
-  res.json(userCorrections);
+const userCorrections = await userCorrectionService.getCorrectionsByEssayId(req.params.id);
+res.json(userCorrections);
 }));
 
-/**
- * Busca a contagem de "likes" de uma redação.
- */
 router.get("/:id/likes", catchAsync(async (req, res) => {
-  const likes = await essayLikeStore.getEssayLikes(req.params.id);
+const likes = await essayLikeService.getLikes(req.params.id);
   res.json({ count: likes.length });
 }));
 
-/**
- * Busca todas as revisões (peer reviews) de uma redação.
- */
 router.get("/:essayId/peer-reviews", catchAsync(async (req, res) => {
-  const reviews = await peerReviewStore.getPeerReviews(req.params.essayId);
-  res.json(reviews);
+const reviews = await peerReviewService.getReviewsByEssayId(req.params.essayId);
+res.json(reviews);
 }));
 
 
 // =================================================================
-// 🔒 Rotas Protegidas (Exigem login)
+// 🔒 Rotas Protegidas
 // =================================================================
 
-// O middleware 'isAuthenticated' será aplicado a todas as rotas abaixo
 router.use(isAuthenticated);
 
-/**
- * Cria uma nova redação.
- */
 router.post("/", catchAsync(async (req, res) => {
-  const userProfile = await profileStore.getUserProfile(req.session.userId!);
-  
-  const essayData = insertEssaySchema.omit({ authorId: true, authorName: true }).parse(req.body);
-  
-  const wordCount = essayData.content.trim().split(/\s+/).filter(word => word.length > 0).length;
-  
-  const essay = await essayStore.createEssay({
-    ...essayData,
-    authorId: req.session.userId!,
-    authorName: userProfile?.displayName || "Anonymous",
-    wordCount,
-  });
-  
-  // Lógica de auto-análise assíncrona para redações públicas
-  if (essay.isPublic) {
-    console.log(`[Auto-Analysis] Starting auto-analysis for public essay: ${essay.id}`);
-    try {
-      const aiReview = getMockAIReview(essay.title, essay.content);
-      console.log(`[Auto-Analysis] Generated mock AI review with ${aiReview.corrections.length} corrections`);
-      
-      await peerReviewStore.createPeerReview({
-        essayId: essay.id,
-        reviewerId: "AI",
-        grammarScore: aiReview.grammarScore,
-        styleScore: aiReview.styleScore,
-        clarityScore: aiReview.clarityScore,
-        structureScore: aiReview.structureScore,
-        contentScore: aiReview.contentScore,
-        researchScore: aiReview.researchScore,
-        overallScore: aiReview.overallScore,
-        corrections: aiReview.corrections,
-        isSubmitted: true,
-      });
-      
-      await essayStore.updateEssay(essay.id, { isAnalyzed: true });
-    } catch (aiError) {
-      console.error(`Failed to auto-analyze essay ${essay.id}:`, aiError);
-      // Não falha a requisição principal, apenas registra o erro
-    }
-  }
-  
+
+  const essay = await essayService.createEssay(req.session.userId!, req.body);
   res.status(201).json(essay);
 }));
 
-/**
- * Atualiza uma redação existente.
- */
 router.put("/:id", catchAsync(async (req, res) => {
-  // TODO: Adicionar verificação de propriedade (o usuário logado é o dono da redação?)
-  // const essay = await storage.getEssay(req.params.id);
-  // if (essay?.authorId !== req.session.userId) {
-  //   return res.status(403).json({ message: "Forbidden" });
-  // }
 
-  const updates = insertEssaySchema.partial().parse(req.body);
-  
-  if (updates.content) {
-    updates.wordCount = updates.content.trim().split(/\s+/).filter(word => word.length > 0).length;
-  }
-  
-  const updatedEssay = await essayStore.updateEssay(req.params.id, updates);
+  const updatedEssay = await essayService.updateEssay(req.params.id, req.body);
   if (!updatedEssay) {
     return res.status(404).json({ message: "Essay not found" });
   }
   res.json(updatedEssay);
 }));
 
-/**
- * Exclui uma redação.
- */
 router.delete("/:id", catchAsync(async (req, res) => {
-  // TODO: Adicionar verificação de propriedade
-  const deleted = await essayStore.deleteEssay(req.params.id);
+
+  const deleted = await essayService.deleteEssay(req.params.id);
   if (!deleted) {
     return res.status(404).json({ message: "Essay not found" });
   }
@@ -162,168 +78,62 @@ router.delete("/:id", catchAsync(async (req, res) => {
 }));
 
 /**
- * (Admin) Executa a análise de IA em todas as redações públicas que ainda não foram analisadas.
+ * (Admin) Batch Analysis
  */
 router.post("/batch-analyze", catchAsync(async (req, res) => {
-  // TODO: Esta rota deveria ser protegida por um middleware 'isAdmin'
-  const allEssays = await essayStore.getEssays(true); // Apenas públicas
-  const analyzedCount = { success: 0, failed: 0, skipped: 0 };
-  
-  for (const essay of allEssays) {
-    const existingAIReview = await peerReviewStore.getPeerReview(essay.id, "AI");
-    if (existingAIReview) {
-      analyzedCount.skipped++;
-      continue;
-    }
-    
-    try {
-      const aiReview = getMockAIReview(essay.title, essay.content);
-      
-      await peerReviewStore.createPeerReview({
-        essayId: essay.id,
-        reviewerId: "AI",
-        grammarScore: aiReview.grammarScore,
-        styleScore: aiReview.styleScore,
-        clarityScore: aiReview.clarityScore,
-        structureScore: aiReview.structureScore,
-        contentScore: aiReview.contentScore,
-        researchScore: aiReview.researchScore,
-        overallScore: aiReview.overallScore,
-        corrections: aiReview.corrections,
-        isSubmitted: true,
-      });
-      
-      await essayStore.updateEssay(essay.id, { isAnalyzed: true });
-      analyzedCount.success++;
-    } catch (error) {
-      console.error(`Failed to analyze essay ${essay.id}:`, error);
-      analyzedCount.failed++;
-    }
-  }
-  
-  res.json({
-    message: "Batch analysis complete",
-    total: allEssays.length,
-    ...analyzedCount
-  });
+
+  const result = await aiService.batchAnalyzeEssays();
+  res.json({ message: "Batch analysis complete", ...result });
 }));
 
 /**
- * (Re)Inicia a análise de IA para uma redação específica.
+ * Single Essay Analysis
  */
 router.post("/:id/analyze", catchAsync(async (req, res) => {
-  const essay = await essayStore.getEssay(req.params.id);
-  if (!essay) {
+
+  const result = await aiService.analyzeEssay(req.params.id);
+  if (!result) {
     return res.status(404).json({ message: "Essay not found" });
   }
-  
-  // TODO: Adicionar verificação de propriedade ou permissão de admin
-
-  const aiReview = getMockAIReview(essay.title, essay.content);
-
-  const existingAIReview = await peerReviewStore.getPeerReview(essay.id, "AI");
-  if (existingAIReview) {
-    // Se já existe, atualiza
-    const updatedReview = await peerReviewStore.updatePeerReview(existingAIReview.id, {
-      grammarScore: aiReview.grammarScore,
-      styleScore: aiReview.styleScore,
-      clarityScore: aiReview.clarityScore,
-      structureScore: aiReview.structureScore,
-      contentScore: aiReview.contentScore,
-      researchScore: aiReview.researchScore,
-      overallScore: aiReview.overallScore,
-      corrections: aiReview.corrections,
-    });
-    
-    await essayStore.updateEssay(essay.id, { isAnalyzed: true });
-    return res.json(updatedReview);
-  }
-
-  // Se não existe, cria
-  const aiPeerReview = await peerReviewStore.createPeerReview({
-    essayId: essay.id,
-    reviewerId: "AI",
-    grammarScore: aiReview.grammarScore,
-    styleScore: aiReview.styleScore,
-    clarityScore: aiReview.clarityScore,
-    structureScore: aiReview.structureScore,
-    contentScore: aiReview.contentScore,
-    researchScore: aiReview.researchScore,
-    overallScore: aiReview.overallScore,
-    corrections: aiReview.corrections,
-    isSubmitted: true, 
-  });
-
-  await essayStore.updateEssay(essay.id, { isAnalyzed: true });
-  res.json(aiPeerReview);
+  res.json(result);
 }));
 
-/**
- * Adiciona uma correção manual (feita por usuário) a uma redação.
- */
 router.post("/:id/user-corrections", catchAsync(async (req, res) => {
-  const correctionData = insertUserCorrectionSchema.parse({
-    ...req.body,
-    essayId: req.params.id,
-    // Note: Seu schema ou método de storage pode precisar do userId
-    // userId: req.session.userId! 
-  });
-  
-  const userCorrection = await userCorrectionStore.createUserCorrection(correctionData);
+
+  const userCorrection = await userCorrectionService.createCorrection(req.params.id, req.body);
   res.status(201).json(userCorrection);
 }));
 
-/**
- * Adiciona ou remove um "like" de uma redação.
- */
 router.post("/:id/like", catchAsync(async (req, res) => {
   const userId = req.session.userId!;
   const essayId = req.params.id;
-
-  const isLiked = await essayLikeStore.isEssayLiked(essayId, userId);
+  const result = await essayLikeService.toggleLike(essayId, userId); 
   
-  if (isLiked) {
-    await essayLikeStore.deleteEssayLike(essayId, userId);
-    res.json({ liked: false });
-  } else {
-    await essayLikeStore.createEssayLike({
-      essayId: essayId,
-      userId,
-    });
-    res.json({ liked: true });
-  }
+  res.json(result);
 }));
 
-/**
- * Cria uma nova revisão (peer review) para uma redação.
- */
 router.post("/:essayId/peer-reviews", catchAsync(async (req, res) => {
-  const reviewerId = req.session.userId!;
-  const { essayId } = req.params;
-  
-  const essay = await essayStore.getEssay(essayId);
-  if (!essay) {
-    return res.status(404).json({ message: "Essay not found" });
-  }
-  
-  if (essay.authorId === reviewerId) {
-    return res.status(403).json({ message: "You cannot review your own essay" });
-  }
-  
-  const existingReview = await peerReviewStore.getPeerReview(essayId, reviewerId);
-  if (existingReview) {
-    // Se o usuário já começou uma revisão, apenas retorna a existente
-    return res.json(existingReview);
-  }
+  try {
+      const { review, isNew } = await peerReviewService.createReview(
+        req.params.essayId, 
+        req.session.userId!, 
+        req.body
+      );
 
-  const reviewData = insertPeerReviewSchema.parse({
-    ...req.body,
-    reviewerId,
-    essayId: essayId
-  });
-  const review = await peerReviewStore.createPeerReview(reviewData);
-  res.status(201).json(review);
+      if (!isNew) {
+        return res.json(review); 
+      }
+      res.status(201).json(review); 
+
+    } catch (error: any) {
+      if (error.message === "ESSAY_NOT_FOUND") {
+        return res.status(404).json({ message: "Essay not found" });
+      }
+      if (error.message === "CANNOT_REVIEW_OWN_ESSAY") {
+        return res.status(403).json({ message: "You cannot review your own essay" });
+      }
+      throw error;
+    }
 }));
-
 
 export default router;

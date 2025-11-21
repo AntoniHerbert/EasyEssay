@@ -26,7 +26,7 @@ export class InspirationDbStore implements IInspirationStore {
   async getInspirations(category?: string, type?: string): Promise<Inspiration[]> {
     let query = this.db.select().from(schema.inspirations);
     
-    const conditions = [eq(schema.inspirations.isPublic, true)];
+    const conditions = [];
     
     if (category) {
       conditions.push(eq(schema.inspirations.category, category));

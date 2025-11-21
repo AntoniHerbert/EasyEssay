@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { friendshipStore } from "../storage/"; 
+import { friendshipService } from "../services/friendship.service";
 import { insertFriendshipSchema } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler"; 
 import { isAuthenticated } from "./middlewares/isAuthenticated"; 
@@ -17,15 +17,9 @@ router.use(isAuthenticated);
  * @query status {string} (opcional) Filtra por status (ex: 'pending', 'accepted').
  */
 router.get("/:userId", catchAsync(async (req, res) => {
-  // TODO: Verificação de Segurança Opcional:
-  // Você quer que qualquer usuário logado veja a lista de amigos de outro?
-  // Se não, adicione uma verificação:
-  // if (req.params.userId !== req.session.userId) {
-  //   return res.status(403).json({ message: "Forbidden: You can only view your own friendships" });
-  // }
   
   const { status } = req.query;
-  const friendships = await friendshipStore.getFriendships(
+  const friendships = await friendshipService.getFriendships(
     req.params.userId,
     status as string
   );
@@ -37,49 +31,44 @@ router.get("/:userId", catchAsync(async (req, res) => {
  * O 'requesterId' é pego automaticamente da sessão do usuário logado.
  */
 router.post("/", catchAsync(async (req, res) => {
-  const friendshipData = insertFriendshipSchema
-    .omit({ requesterId: true })
-    .parse(req.body);
+  try {
+      const friendship = await friendshipService.createFriendRequest(
+        req.session.userId!, 
+        req.body
+      );
+      res.status(201).json(friendship);
+    } catch (error: any) {
 
-  // Impede que o usuário envie um pedido para si mesmo
-  if (friendshipData.addresseeId === req.session.userId!) {
-     return res.status(400).json({ message: "You cannot send a friend request to yourself" });
-  }
-
-  // TODO: Verificar se já existe uma amizade ou pedido pendente
-  
-  const friendship = await friendshipStore.createFriendship({
-    ...friendshipData,
-    requesterId: req.session.userId!,
-  });
-  res.status(201).json(friendship);
+      if (error.message === "CANNOT_ADD_SELF") {
+        return res.status(400).json({ message: "You cannot send a friend request to yourself" });
+      }
+      if (error.message === "FRIENDSHIP_ALREADY_EXISTS") {
+        return res.status(409).json({ message: "Friendship or request already exists" });
+      }
+      throw error;
+    }
 }));
 
 /**
  * Atualiza uma amizade (ex: aceitar, recusar ou bloquear um pedido).
  */
 router.put("/:id", catchAsync(async (req, res) => {
-  // TODO: VERIFICAÇÃO DE SEGURANÇA CRÍTICA!
-  // Você DEVE verificar se o usuário logado (req.session.userId)
-  // é o 'addresseeId' (destinatário) deste pedido de amizade.
-  // Caso contrário, qualquer usuário logado pode aceitar o pedido de amizade de outra pessoa.
-  
-  // Exemplo de verificação:
-  // const friendshipToUpdate = await storage.getFriendshipById(req.params.id); // Você pode precisar criar este método
-  // if (!friendshipToUpdate) {
-  //   return res.status(404).json({ message: "Friendship not found" });
-  // }
-  // if (friendshipToUpdate.addresseeId !== req.session.userId) {
-  //   return res.status(403).json({ message: "Forbidden: You cannot update this friendship request" });
-  // }
-
-  const updates = insertFriendshipSchema.partial().parse(req.body);
-  const friendship = await friendshipStore.updateFriendship(req.params.id, updates);
-
-  if (!friendship) {
-    return res.status(404).json({ message: "Friendship not found" });
-  }
-  res.json(friendship);
+  try {
+      const friendship = await friendshipService.updateFriendshipStatus(
+        req.params.id,
+        req.session.userId!,
+        req.body
+      );
+      res.json(friendship);
+    } catch (error: any) {
+      if (error.message === "FRIENDSHIP_NOT_FOUND") {
+        return res.status(404).json({ message: "Friendship not found" });
+      }
+      if (error.message === "FORBIDDEN_UPDATE") {
+        return res.status(403).json({ message: "You are not authorized to update this request" });
+      }
+      throw error;
+    }
 }));
 
 // TODO: Você pode querer adicionar uma rota DELETE para remover/cancelar amizades

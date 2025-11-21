@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { profileStore } from "../storage/"; 
+import { profileService } from "server/services/profile.service";
 import { catchAsync } from "./middlewares/errorHandler"; 
 
 const router = Router();
@@ -30,7 +30,7 @@ router.get("/", catchAsync(async (req, res) => {
   //
   // =================================================================
 
-  const users = await profileStore.getAllUsers();
+const users = await profileService.getAllProfiles();
   res.json(users);
 }));
 
