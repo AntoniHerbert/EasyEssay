@@ -5,6 +5,7 @@ import { type Tx } from "../types";
 
 export class PeerReviewMemStore implements IPeerReviewStore {
   private peerReviews: Map<string, PeerReview>;
+  private reviewLikes: Map<string, Set<string>> = new Map();
 
   constructor() {
     this.peerReviews = new Map();
@@ -97,5 +98,30 @@ export class PeerReviewMemStore implements IPeerReviewStore {
       this.peerReviews.delete(id);
     }
   }
+  }
+
+  async getLikeCount(reviewId: string): Promise<number> {
+    const likes = this.reviewLikes.get(reviewId);
+    return likes ? likes.size : 0;
+  }
+
+  async hasUserLiked(reviewId: string, userId: string): Promise<boolean> {
+    const likes = this.reviewLikes.get(reviewId);
+    return likes ? likes.has(userId) : false;
+  }
+
+  async addLike(reviewId: string, userId: string, _tx?: Tx): Promise<void> {
+    if (!this.reviewLikes.has(reviewId)) {
+      this.reviewLikes.set(reviewId, new Set());
+    }
+    
+    this.reviewLikes.get(reviewId)!.add(userId);
+  }
+
+  async removeLike(reviewId: string, userId: string, _tx?: Tx): Promise<void> {
+    const likes = this.reviewLikes.get(reviewId);
+    if (likes) {
+      likes.delete(userId);
+    }
   }
 }

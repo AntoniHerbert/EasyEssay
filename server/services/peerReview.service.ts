@@ -132,4 +132,39 @@ export class PeerReviewService {
     
     return await this.peerReviewStore.addCorrectionToReview(reviewId, data);
   }
+
+  /**
+   * Obtém contagem de likes e se o usuário atual deu like.
+   */
+  async getLikeStatus(reviewId: string, currentUserId?: string) {
+    const [likeCount, isLiked] = await Promise.all([
+      this.peerReviewStore.getLikeCount(reviewId),
+      currentUserId 
+        ? this.peerReviewStore.hasUserLiked(reviewId, currentUserId) 
+        : Promise.resolve(false)
+    ]);
+
+    return { count: likeCount, isLiked };
+  }
+
+  /**
+   * Alterna o like (Se tem, tira. Se não tem, põe).
+   * Retorna o novo estado completo.
+   */
+  async toggleLike(reviewId: string, userId: string) {
+    const isLiked = await this.peerReviewStore.hasUserLiked(reviewId, userId);
+
+    if (isLiked) {
+      await this.peerReviewStore.removeLike(reviewId, userId);
+    } else {
+      await this.peerReviewStore.addLike(reviewId, userId);
+    }
+
+    const newCount = await this.peerReviewStore.getLikeCount(reviewId);
+
+    return {
+      isLiked: !isLiked,
+      count: newCount
+    };
+  }
 }

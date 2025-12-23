@@ -63,4 +63,35 @@ router.post("/:id/corrections", validateBody(addCorrectionSchema), catchAsync(as
     }
 }));
 
+router.get("/:id/likes", async (req, res) => {
+  try {
+    const result = await peerReviewService.getLikeStatus(
+      req.params.id, 
+      req.session.userId
+    );
+    res.json(result);
+  } catch (error) {
+    console.error("[PeerReviewLikes] Get Error:", error);
+    res.status(500).json({ message: "Failed to fetch like stats" });
+  }
+});
+
+router.post("/:id/likes", async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const result = await peerReviewService.toggleLike(
+      req.params.id,
+      req.session.userId
+    );
+    
+    res.json(result);
+  } catch (error) {
+    console.error("[PeerReviewLikes] Toggle Error:", error);
+    res.status(500).json({ message: "Failed to toggle like" });
+  }
+});
+
 export default router;

@@ -1,9 +1,11 @@
-import { type DrizzleDb } from "../index";
+import { ITransactionManager, type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
 import { eq, and, desc, count, avg, lt } from "drizzle-orm";
 import { type PeerReview, type InsertPeerReview, type CorrectionObject } from "@shared/schema";
 import { IPeerReviewStore } from "./peerReview.store";
 import { type Tx } from "../types"; 
+
+
 
 
 export class PeerReviewDbStore implements IPeerReviewStore {
@@ -143,5 +145,43 @@ export class PeerReviewDbStore implements IPeerReviewStore {
     await executor
       .delete(schema.peerReviews)
       .where(eq(schema.peerReviews.essayId, essayId));
+  }
+
+  async getLikeCount(reviewId: string): Promise<number> {
+    const [result] = await this.db
+      .select({ value: count() })
+      .from(schema.peerReviewLikes)
+      .where(eq(schema.peerReviewLikes.reviewId, reviewId));
+    
+    return result?.value || 0;
+  }
+
+  async hasUserLiked(reviewId: string, userId: string): Promise<boolean> {
+    const [result] = await this.db
+      .select()
+      .from(schema.peerReviewLikes)
+      .where(and(
+        eq(schema.peerReviewLikes.reviewId, reviewId),
+        eq(schema.peerReviewLikes.userId, userId)
+      ))
+      .limit(1);
+
+    return !!result;
+  }
+
+  async addLike(reviewId: string, userId: string, tx?: ITransactionManager): Promise<void> {
+    const db = tx || this.db as any;
+    await db.insert(schema.peerReviewLikes)
+      .values({ reviewId, userId })
+      .onConflictDoNothing(); 
+  }
+
+  async removeLike(reviewId: string, userId: string, tx?: ITransactionManager): Promise<void> {
+    const db = tx || this.db as any;
+    await db.delete(schema.peerReviewLikes)
+      .where(and(
+        eq(schema.peerReviewLikes.reviewId, reviewId),
+        eq(schema.peerReviewLikes.userId, userId)
+      ));
   }
 }

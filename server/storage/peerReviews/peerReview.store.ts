@@ -10,4 +10,8 @@ export interface IPeerReviewStore {
   addCorrectionToReview(reviewId: string, correction: CorrectionObject, tx?: Tx): Promise<PeerReview | undefined>;
   deleteByEssayId(essayId: string, tx?: Tx): Promise<void>;
   getEssayStats(essayId: string, tx?: Tx): Promise<{ count: number; average: number }>;
+  getLikeCount(reviewId: string): Promise<number>;
+  hasUserLiked(reviewId: string, userId: string): Promise<boolean>;
+  addLike(reviewId: string, userId: string, tx?: Tx): Promise<void>;
+  removeLike(reviewId: string, userId: string, tx?: Tx): Promise<void>;
 }
