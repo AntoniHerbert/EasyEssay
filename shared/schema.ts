@@ -3,13 +3,20 @@ import { pgTable, text, varchar, boolean, timestamp, jsonb, integer, pgEnum } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username", { length: 50 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const rubricCategorySchema = z.object({
+  name: z.string(),
+  maxScore: z.number(),
+  description: z.string().optional(),
+});
+
+export type RubricCategory = z.infer<typeof rubricCategorySchema>;
 
 export const essays = pgTable("essays", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -20,6 +27,8 @@ export const essays = pgTable("essays", {
   wordCount: integer("word_count").notNull().default(0),
   isPublic: boolean("is_public").notNull().default(false),
   isAnalyzed: boolean("is_analyzed").notNull().default(false),
+  rubric: jsonb("rubric").$type<RubricCategory[]>(),
+  rubricName: text("rubric_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -51,12 +60,12 @@ export const inspirations = pgTable("inspirations", {
   author: text("author").notNull(),
   content: text("content").notNull(),
   category: varchar("category", { length: 50 }).notNull(), 
-  type: varchar("type", { length: 20 }).notNull(),
-  source: text("source"), 
+  type: varchar("type", { length: 20 }).notNull(), 
+  source: text("source"),
   tags: text("tags").array().default([]),
   difficulty: varchar("difficulty", { length: 20 }).notNull().default("intermediate"),
   wordCount: integer("word_count").notNull().default(0),
-  readTime: integer("read_time").notNull().default(5),
+  readTime: integer("read_time").notNull().default(5), 
   isPublic: boolean("is_public").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -161,7 +170,6 @@ export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 export type UserMessage = typeof userMessages.$inferSelect;
 export type InsertUserMessage = z.infer<typeof insertUserMessageSchema>;
 
-
 export const reviewCategoriesEnum = pgEnum('review_category', [
   'grammar',
   'style', 
@@ -170,7 +178,6 @@ export const reviewCategoriesEnum = pgEnum('review_category', [
   'content',
   'research'
 ]);
-
 
 export const correctionSchema = z.object({
   category: z.enum(['grammar', 'style', 'clarity', 'structure', 'content', 'research']),
@@ -182,17 +189,27 @@ export const correctionSchema = z.object({
 
 export type CorrectionObject = z.infer<typeof correctionSchema>;
 
+export const rubricScoreSchema = z.object({
+  categoryName: z.string(),
+  score: z.number(),
+  maxScore: z.number(),
+  feedback: z.string().optional(),
+});
+
+export type RubricScore = z.infer<typeof rubricScoreSchema>;
+
 export const peerReviews = pgTable('peer_reviews', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   essayId: varchar('essay_id').notNull(),
   reviewerId: varchar('reviewer_id').notNull(),
   grammarScore: integer('grammar_score').notNull().default(100), 
   styleScore: integer('style_score').notNull().default(100), 
-  clarityScore: integer('clarity_score').notNull().default(100), 
+  clarityScore: integer('clarity_score').notNull().default(100),
   structureScore: integer('structure_score').notNull().default(100), 
   contentScore: integer('content_score').notNull().default(100), 
   researchScore: integer('research_score').notNull().default(100), 
   overallScore: integer('overall_score').notNull().default(600), 
+  rubricScores: jsonb('rubric_scores').$type<RubricScore[]>(),
   corrections: jsonb('corrections').$type<CorrectionObject[]>().notNull().default([]),
   reviewComment: text('review_comment'),
   isSubmitted: boolean('is_submitted').notNull().default(false),
@@ -210,3 +227,222 @@ export type PeerReview = typeof peerReviews.$inferSelect;
 export type InsertPeerReview = z.infer<typeof insertPeerReviewSchema>;
 
 export type ReviewCategory = 'grammar' | 'style' | 'clarity' | 'structure' | 'content' | 'research';
+
+export const peerReviewLikes = pgTable('peer_review_likes', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  reviewId: varchar('review_id').notNull(),
+  userId: varchar('user_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertPeerReviewLikeSchema = createInsertSchema(peerReviewLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PeerReviewLike = typeof peerReviewLikes.$inferSelect;
+export type InsertPeerReviewLike = z.infer<typeof insertPeerReviewLikeSchema>;
+
+export const communities = pgTable('communities', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar('code', { length: 8 }).notNull().unique(), 
+  name: text('name').notNull(),
+  description: text('description'),
+  leaderId: varchar('leader_id').notNull(),
+  leaderName: text('leader_name').notNull(),
+  memberCount: integer('member_count').notNull().default(1),
+  isPublic: boolean('is_public').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const communityMembers = pgTable('community_members', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  communityId: varchar('community_id').notNull(),
+  userId: varchar('user_id').notNull(),
+  username: text('username').notNull(),
+  role: varchar('role', { length: 20 }).notNull().default('member'), 
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+});
+
+export const communityTopics = pgTable('community_topics', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  communityId: varchar('community_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  createdById: varchar('created_by_id').notNull(),
+  createdByName: text('created_by_name').notNull(),
+  deadline: timestamp('deadline'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const topicSubmissions = pgTable('topic_submissions', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  topicId: varchar('topic_id').notNull(),
+  essayId: varchar('essay_id').notNull(),
+  userId: varchar('user_id').notNull(),
+  username: text('username').notNull(),
+  isReviewed: boolean('is_reviewed').notNull().default(false),
+  reviewedById: varchar('reviewed_by_id'),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const joinRequests = pgTable('join_requests', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  communityId: varchar('community_id').notNull(),
+  userId: varchar('user_id').notNull(),
+  username: text('username').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), 
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  respondedAt: timestamp('responded_at'),
+  respondedById: varchar('responded_by_id'),
+});
+
+export const insertCommunitySchema = createInsertSchema(communities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  memberCount: true,
+});
+
+export const insertCommunityMemberSchema = createInsertSchema(communityMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertCommunityTopicSchema = createInsertSchema(communityTopics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTopicSubmissionSchema = createInsertSchema(topicSubmissions).omit({
+  id: true,
+  createdAt: true,
+  isReviewed: true,
+  reviewedById: true,
+  reviewedAt: true,
+});
+
+export const insertJoinRequestSchema = createInsertSchema(joinRequests).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  respondedAt: true,
+  respondedById: true,
+});
+
+export type Community = typeof communities.$inferSelect;
+export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
+export type CommunityMember = typeof communityMembers.$inferSelect;
+export type InsertCommunityMember = z.infer<typeof insertCommunityMemberSchema>;
+export type CommunityTopic = typeof communityTopics.$inferSelect;
+export type InsertCommunityTopic = z.infer<typeof insertCommunityTopicSchema>;
+export type TopicSubmission = typeof topicSubmissions.$inferSelect;
+export type InsertTopicSubmission = z.infer<typeof insertTopicSubmissionSchema>;
+export type JoinRequest = typeof joinRequests.$inferSelect;
+export type InsertJoinRequest = z.infer<typeof insertJoinRequestSchema>;
+
+export const exploreContentTypeEnum = pgEnum('explore_content_type', [
+  'category_list',
+  'essay_topic',
+  'quote',
+  'template'
+]);
+
+export const categoryItemSchema = z.object({
+  name: z.string(),
+  maxScore: z.number().min(1).max(200),
+});
+
+export const categoryListPayloadSchema = z.object({
+  categories: z.array(categoryItemSchema).min(1),
+});
+
+export const essayTopicPayloadSchema = z.object({
+  description: z.string().optional(),
+});
+
+export const quotePayloadSchema = z.object({
+  author: z.string(),
+  source: z.string().optional(),
+});
+
+export const templatePayloadSchema = z.object({
+  templateContent: z.string(),
+  gapMarkers: z.array(z.object({
+    placeholder: z.string(),
+    hint: z.string().optional(),
+  })),
+});
+
+export const explorePayloadSchema = z.union([
+  categoryListPayloadSchema,
+  essayTopicPayloadSchema,
+  quotePayloadSchema,
+  templatePayloadSchema,
+]);
+
+export type CategoryItem = z.infer<typeof categoryItemSchema>;
+export type CategoryListPayload = z.infer<typeof categoryListPayloadSchema>;
+export type EssayTopicPayload = z.infer<typeof essayTopicPayloadSchema>;
+export type QuotePayload = z.infer<typeof quotePayloadSchema>;
+export type TemplatePayload = z.infer<typeof templatePayloadSchema>;
+export type ExplorePayload = z.infer<typeof explorePayloadSchema>;
+
+export const exploreItems = pgTable('explore_items', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  type: exploreContentTypeEnum('type').notNull(),
+  title: text('title').notNull(),
+  subtitle: text('subtitle'),
+  authorId: varchar('author_id').notNull(),
+  authorName: text('author_name').notNull(),
+  payload: jsonb('payload').$type<ExplorePayload>().notNull(),
+  likesCount: integer('likes_count').notNull().default(0),
+  savesCount: integer('saves_count').notNull().default(0),
+  isFeatured: boolean('is_featured').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const exploreLikes = pgTable('explore_likes', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  exploreItemId: varchar('explore_item_id').notNull(),
+  userId: varchar('user_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const exploreSaves = pgTable('explore_saves', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  exploreItemId: varchar('explore_item_id').notNull(),
+  userId: varchar('user_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertExploreItemSchema = createInsertSchema(exploreItems).omit({
+  id: true,
+  createdAt: true,
+  likesCount: true,
+  savesCount: true,
+});
+
+export const insertExploreLikeSchema = createInsertSchema(exploreLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExploreSaveSchema = createInsertSchema(exploreSaves).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ExploreItem = typeof exploreItems.$inferSelect;
+export type InsertExploreItem = z.infer<typeof insertExploreItemSchema>;
+export type ExploreLike = typeof exploreLikes.$inferSelect;
+export type InsertExploreLike = z.infer<typeof insertExploreLikeSchema>;
+export type ExploreSave = typeof exploreSaves.$inferSelect;
+export type InsertExploreSave = z.infer<typeof insertExploreSaveSchema>;
+
+export type ExploreContentType = 'category_list' | 'essay_topic' | 'quote' | 'template';
