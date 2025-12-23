@@ -1,4 +1,4 @@
-import { type CorrectionObject } from '@shared/schema';
+import { type CorrectionObject, type RubricCategory, type RubricScore } from '@shared/schema';
 
 interface AIReviewResult {
   grammarScore: number;
@@ -8,10 +8,11 @@ interface AIReviewResult {
   contentScore: number;
   researchScore: number;
   overallScore: number;
+  rubricScores?: RubricScore[];
   corrections: CorrectionObject[];
 }
 
-export function getMockAIReview(title: string, content: string): AIReviewResult {
+export function getMockAIReview(title: string, content: string, rubric?: RubricCategory[]): AIReviewResult {
   const corrections: CorrectionObject[] = [];
 
   if (content.indexOf("However") >= 0) {
@@ -105,6 +106,30 @@ export function getMockAIReview(title: string, content: string): AIReviewResult 
 
   const overallScore = grammarScore + styleScore + clarityScore + structureScore + contentScore + researchScore;
 
+  let rubricScores: RubricScore[] | undefined;
+  if (rubric && rubric.length > 0) {
+    const feedbackOptions = [
+      "Good work in this area. Consider adding more specific details.",
+      "Well-developed section. A few minor improvements could strengthen this.",
+      "Solid foundation here. Continue to refine your approach.",
+      "This area shows promise. Focus on clarity and precision.",
+      "Adequate coverage. Adding examples would enhance this section.",
+    ];
+    
+    rubricScores = rubric.map(cat => {
+      const percentage = 0.6 + Math.random() * 0.35;
+      const score = Math.round(cat.maxScore * percentage);
+      const feedbackIndex = Math.floor(Math.random() * feedbackOptions.length);
+      
+      return {
+        categoryName: cat.name,
+        score,
+        maxScore: cat.maxScore,
+        feedback: feedbackOptions[feedbackIndex],
+      };
+    });
+  }
+
   return {
     grammarScore,
     styleScore,
@@ -113,6 +138,7 @@ export function getMockAIReview(title: string, content: string): AIReviewResult 
     contentScore,
     researchScore,
     overallScore,
+    rubricScores,
     corrections: corrections.filter(c => c.textStartIndex >= 0)
   };
 }

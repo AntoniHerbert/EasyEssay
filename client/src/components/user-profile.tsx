@@ -298,7 +298,7 @@ export function UserProfile() {
           </div>
 
           {/* Progress Bar */}
-          {/*
+          {/*   
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Level Progress</span>
