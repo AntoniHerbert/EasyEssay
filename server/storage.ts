@@ -1,12 +1,10 @@
-import { type Essay, type InsertEssay, type UserCorrection, type InsertUserCorrection, type EssayLike, type InsertEssayLike, type Inspiration, type InsertInspiration, type UserProfile, type InsertUserProfile, type Friendship, type InsertFriendship, type UserMessage, type InsertUserMessage, type PeerReview, type InsertPeerReview, type CorrectionObject, type User, type InsertUser } from "@shared/schema";
+import { type Essay, type InsertEssay, type UserCorrection, type InsertUserCorrection, type EssayLike, type InsertEssayLike, type Inspiration, type InsertInspiration, type UserProfile, type InsertUserProfile, type Friendship, type InsertFriendship, type UserMessage, type InsertUserMessage, type PeerReview, type InsertPeerReview, type CorrectionObject, type User, type InsertUser, type Community, type InsertCommunity, type CommunityMember, type InsertCommunityMember, type CommunityTopic, type InsertCommunityTopic, type TopicSubmission, type InsertTopicSubmission, type JoinRequest, type InsertJoinRequest, type ExploreItem, type InsertExploreItem, type ExploreLike, type InsertExploreLike, type ExploreSave, type InsertExploreSave, type ExploreContentType, type PeerReviewLike, type InsertPeerReviewLike } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
-
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
   getEssay(id: string): Promise<Essay | undefined>;
   getEssays(isPublic?: boolean, authorId?: string): Promise<Essay[]>;
   createEssay(essay: InsertEssay): Promise<Essay>;
@@ -27,7 +25,6 @@ export interface IStorage {
   createInspiration(inspiration: InsertInspiration): Promise<Inspiration>;
   updateInspiration(id: string, updates: Partial<InsertInspiration>): Promise<Inspiration | undefined>;
 
-
   getAllUsers(): Promise<UserProfile[]>;
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
@@ -47,6 +44,55 @@ export interface IStorage {
   createPeerReview(review: InsertPeerReview): Promise<PeerReview>;
   updatePeerReview(id: string, updates: Partial<InsertPeerReview>): Promise<PeerReview | undefined>;
   addCorrectionToReview(reviewId: string, correction: CorrectionObject): Promise<PeerReview | undefined>;
+
+  getCommunities(): Promise<Community[]>;
+  getCommunity(id: string): Promise<Community | undefined>;
+  createCommunity(community: InsertCommunity): Promise<Community>;
+  updateCommunity(id: string, updates: Partial<InsertCommunity>): Promise<Community | undefined>;
+  deleteCommunity(id: string): Promise<boolean>;
+  
+  getCommunityMembers(communityId: string): Promise<CommunityMember[]>;
+  getCommunityMember(communityId: string, userId: string): Promise<CommunityMember | undefined>;
+  getUserCommunities(userId: string): Promise<CommunityMember[]>;
+  addCommunityMember(member: InsertCommunityMember): Promise<CommunityMember>;
+  removeCommunityMember(communityId: string, userId: string): Promise<boolean>;
+  
+  getCommunityTopics(communityId: string): Promise<CommunityTopic[]>;
+  getCommunityTopic(id: string): Promise<CommunityTopic | undefined>;
+  createCommunityTopic(topic: InsertCommunityTopic): Promise<CommunityTopic>;
+  updateCommunityTopic(id: string, updates: Partial<InsertCommunityTopic>): Promise<CommunityTopic | undefined>;
+  
+  getTopicSubmissions(topicId: string): Promise<TopicSubmission[]>;
+  getTopicSubmission(topicId: string, userId: string): Promise<TopicSubmission | undefined>;
+  getUserSubmissions(userId: string): Promise<TopicSubmission[]>;
+  createTopicSubmission(submission: InsertTopicSubmission): Promise<TopicSubmission>;
+  markSubmissionReviewed(id: string, reviewerId: string): Promise<TopicSubmission | undefined>;
+  
+  getJoinRequests(communityId: string): Promise<JoinRequest[]>;
+  getJoinRequest(communityId: string, userId: string): Promise<JoinRequest | undefined>;
+  getUserPendingJoinRequests(userId: string): Promise<JoinRequest[]>;
+  createJoinRequest(request: InsertJoinRequest): Promise<JoinRequest>;
+  updateJoinRequest(id: string, updates: { status: string; respondedAt: Date; respondedById: string }): Promise<JoinRequest | undefined>;
+  
+  updateCommunityMemberRole(communityId: string, userId: string, role: string): Promise<CommunityMember | undefined>;
+  
+  getExploreItems(type?: ExploreContentType, authorId?: string): Promise<ExploreItem[]>;
+  getExploreItem(id: string): Promise<ExploreItem | undefined>;
+  createExploreItem(item: InsertExploreItem): Promise<ExploreItem>;
+  deleteExploreItem(id: string): Promise<boolean>;
+  
+  getExploreLikes(itemId: string): Promise<ExploreLike[]>;
+  isExploreLiked(itemId: string, userId: string): Promise<boolean>;
+  toggleExploreLike(itemId: string, userId: string): Promise<boolean>;
+  
+  getExploreSaves(userId: string): Promise<ExploreSave[]>;
+  isExploreSaved(itemId: string, userId: string): Promise<boolean>;
+  toggleExploreSave(itemId: string, userId: string): Promise<boolean>;
+  
+  getPeerReviewLikes(reviewId: string): Promise<PeerReviewLike[]>;
+  getPeerReviewLikeCount(reviewId: string): Promise<number>;
+  isPeerReviewLiked(reviewId: string, userId: string): Promise<boolean>;
+  togglePeerReviewLike(reviewId: string, userId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -74,7 +120,6 @@ export class MemStorage implements IStorage {
     this.seedMockData();
   }
 
-
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -93,7 +138,6 @@ export class MemStorage implements IStorage {
     this.users.set(id, user);
     return user;
   }
-
 
   async getEssay(id: string): Promise<Essay | undefined> {
     return this.essays.get(id);
@@ -141,7 +185,6 @@ export class MemStorage implements IStorage {
     return this.essays.delete(id);
   }
 
-
   async getUserCorrections(essayId: string): Promise<UserCorrection[]> {
     return Array.from(this.userCorrections.values())
       .filter(correction => correction.essayId === essayId)
@@ -171,7 +214,6 @@ export class MemStorage implements IStorage {
     this.userCorrections.set(id, updatedUserCorrection);
     return updatedUserCorrection;
   }
-
 
   async getEssayLikes(essayId: string): Promise<EssayLike[]> {
     return Array.from(this.essayLikes.values())
@@ -204,7 +246,6 @@ export class MemStorage implements IStorage {
     return Array.from(this.essayLikes.values())
       .some(like => like.essayId === essayId && like.userId === userId);
   }
-
 
   async getInspirations(category?: string, type?: string): Promise<Inspiration[]> {
     const allInspirations = Array.from(this.inspirations.values());
@@ -251,7 +292,6 @@ export class MemStorage implements IStorage {
     return updatedInspiration;
   }
 
-  
   async getAllUsers(): Promise<UserProfile[]> {
     return Array.from(this.userProfiles.values())
       .sort((a, b) => b.totalEssays - a.totalEssays); 
@@ -335,14 +375,11 @@ export class MemStorage implements IStorage {
     return updatedFriendship;
   }
 
-  
   async getUserMessages(userId: string, unreadOnly?: boolean): Promise<UserMessage[]> {
     return Array.from(this.userMessages.values())
       .filter(message => {
-    
         const isInvolved = message.toUserId === userId || message.fromUserId === userId;
         if (!isInvolved) return false;
-
         if (unreadOnly && (message.toUserId !== userId || message.isRead)) return false;
         return true;
       })
@@ -374,7 +411,6 @@ export class MemStorage implements IStorage {
     this.userMessages.set(id, updatedMessage);
     return updatedMessage;
   }
-
 
   async getPeerReviews(essayId: string): Promise<PeerReview[]> {
     return Array.from(this.peerReviews.values()).filter(r => r.essayId === essayId);
@@ -533,14 +569,55 @@ The challenge is not just technological or economic—it's moral. We have a resp
   }
 
   private async seedMockData() {
-
   }
+
+  async getCommunities(): Promise<Community[]> { return []; }
+  async getCommunity(id: string): Promise<Community | undefined> { return undefined; }
+  async createCommunity(community: InsertCommunity): Promise<Community> { throw new Error("Not implemented"); }
+  async updateCommunity(id: string, updates: Partial<InsertCommunity>): Promise<Community | undefined> { return undefined; }
+  async deleteCommunity(id: string): Promise<boolean> { return false; }
+  async getCommunityMembers(communityId: string): Promise<CommunityMember[]> { return []; }
+  async getCommunityMember(communityId: string, userId: string): Promise<CommunityMember | undefined> { return undefined; }
+  async getUserCommunities(userId: string): Promise<CommunityMember[]> { return []; }
+  async addCommunityMember(member: InsertCommunityMember): Promise<CommunityMember> { throw new Error("Not implemented"); }
+  async removeCommunityMember(communityId: string, userId: string): Promise<boolean> { return false; }
+  async updateCommunityMemberRole(communityId: string, userId: string, role: string): Promise<CommunityMember | undefined> { return undefined; }
+  async getCommunityTopics(communityId: string): Promise<CommunityTopic[]> { return []; }
+  async getCommunityTopic(id: string): Promise<CommunityTopic | undefined> { return undefined; }
+  async createCommunityTopic(topic: InsertCommunityTopic): Promise<CommunityTopic> { throw new Error("Not implemented"); }
+  async updateCommunityTopic(id: string, updates: Partial<InsertCommunityTopic>): Promise<CommunityTopic | undefined> { return undefined; }
+  async getTopicSubmissions(topicId: string): Promise<TopicSubmission[]> { return []; }
+  async getTopicSubmission(topicId: string, userId: string): Promise<TopicSubmission | undefined> { return undefined; }
+  async getUserSubmissions(userId: string): Promise<TopicSubmission[]> { return []; }
+  async createTopicSubmission(submission: InsertTopicSubmission): Promise<TopicSubmission> { throw new Error("Not implemented"); }
+  async markSubmissionReviewed(id: string, reviewerId: string): Promise<TopicSubmission | undefined> { return undefined; }
+  async getJoinRequests(communityId: string): Promise<JoinRequest[]> { return []; }
+  async getJoinRequest(communityId: string, userId: string): Promise<JoinRequest | undefined> { return undefined; }
+  async getUserPendingJoinRequests(userId: string): Promise<JoinRequest[]> { return []; }
+  async createJoinRequest(request: InsertJoinRequest): Promise<JoinRequest> { throw new Error("Not implemented"); }
+  async updateJoinRequest(id: string, updates: { status: string; respondedAt: Date; respondedById: string }): Promise<JoinRequest | undefined> { return undefined; }
+  
+  async getExploreItems(type?: ExploreContentType, authorId?: string): Promise<ExploreItem[]> { return []; }
+  async getExploreItem(id: string): Promise<ExploreItem | undefined> { return undefined; }
+  async createExploreItem(item: InsertExploreItem): Promise<ExploreItem> { throw new Error("Not implemented"); }
+  async deleteExploreItem(id: string): Promise<boolean> { return false; }
+  async getExploreLikes(itemId: string): Promise<ExploreLike[]> { return []; }
+  async isExploreLiked(itemId: string, userId: string): Promise<boolean> { return false; }
+  async toggleExploreLike(itemId: string, userId: string): Promise<boolean> { return false; }
+  async getExploreSaves(userId: string): Promise<ExploreSave[]> { return []; }
+  async isExploreSaved(itemId: string, userId: string): Promise<boolean> { return false; }
+  async toggleExploreSave(itemId: string, userId: string): Promise<boolean> { return false; }
+  
+  async getPeerReviewLikes(reviewId: string): Promise<PeerReviewLike[]> { return []; }
+  async getPeerReviewLikeCount(reviewId: string): Promise<number> { return 0; }
+  async isPeerReviewLiked(reviewId: string, userId: string): Promise<boolean> { return false; }
+  async togglePeerReviewLike(reviewId: string, userId: string): Promise<boolean> { return false; }
 }
 
-import { drizzle } from "drizzle-orm/node-postgres";
-import pkg from "pg";
-const { Pool } = pkg;
-import { eq, and, or, desc } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+import { eq, and, or, desc, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
 
@@ -913,7 +990,6 @@ The challenge is not just technological or economic—it's moral. We have a resp
     return result[0];
   }
 
-
   async getPeerReviews(essayId: string): Promise<PeerReview[]> {
     const result = await this.db
       .select()
@@ -967,6 +1043,403 @@ The challenge is not just technological or economic—it's moral. We have a resp
       .where(eq(schema.peerReviews.id, reviewId))
       .returning();
     return result[0];
+  }
+
+  async getCommunities(): Promise<Community[]> {
+    const result = await this.db
+      .select()
+      .from(schema.communities)
+      .orderBy(desc(schema.communities.createdAt));
+    return result;
+  }
+
+  async getCommunity(id: string): Promise<Community | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.communities)
+      .where(eq(schema.communities.id, id));
+    return result[0];
+  }
+
+  async createCommunity(community: InsertCommunity): Promise<Community> {
+    const result = await this.db.insert(schema.communities).values(community).returning();
+    return result[0];
+  }
+
+  async updateCommunity(id: string, updates: Partial<InsertCommunity>): Promise<Community | undefined> {
+    const result = await this.db
+      .update(schema.communities)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.communities.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCommunity(id: string): Promise<boolean> {
+    const result = await this.db
+      .delete(schema.communities)
+      .where(eq(schema.communities.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getCommunityMembers(communityId: string): Promise<CommunityMember[]> {
+    const result = await this.db
+      .select()
+      .from(schema.communityMembers)
+      .where(eq(schema.communityMembers.communityId, communityId))
+      .orderBy(desc(schema.communityMembers.joinedAt));
+    return result;
+  }
+
+  async getCommunityMember(communityId: string, userId: string): Promise<CommunityMember | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.communityMembers)
+      .where(and(
+        eq(schema.communityMembers.communityId, communityId),
+        eq(schema.communityMembers.userId, userId)
+      ));
+    return result[0];
+  }
+
+  async getUserCommunities(userId: string): Promise<CommunityMember[]> {
+    const result = await this.db
+      .select()
+      .from(schema.communityMembers)
+      .where(eq(schema.communityMembers.userId, userId))
+      .orderBy(desc(schema.communityMembers.joinedAt));
+    return result;
+  }
+
+  async addCommunityMember(member: InsertCommunityMember): Promise<CommunityMember> {
+    const existingMember = await this.getCommunityMember(member.communityId, member.userId);
+    if (existingMember) {
+      return existingMember; 
+    }
+    
+    const result = await this.db.insert(schema.communityMembers).values(member).returning();
+    await this.db
+      .update(schema.communities)
+      .set({ memberCount: sql`${schema.communities.memberCount} + 1` })
+      .where(eq(schema.communities.id, member.communityId));
+    return result[0];
+  }
+
+  async removeCommunityMember(communityId: string, userId: string): Promise<boolean> {
+    const result = await this.db
+      .delete(schema.communityMembers)
+      .where(and(
+        eq(schema.communityMembers.communityId, communityId),
+        eq(schema.communityMembers.userId, userId)
+      ))
+      .returning();
+    if (result.length > 0) {
+      await this.db
+        .update(schema.communities)
+        .set({ memberCount: sql`${schema.communities.memberCount} - 1` })
+        .where(eq(schema.communities.id, communityId));
+      return true;
+    }
+    return false;
+  }
+
+  async updateCommunityMemberRole(communityId: string, userId: string, role: string): Promise<CommunityMember | undefined> {
+    const result = await this.db
+      .update(schema.communityMembers)
+      .set({ role })
+      .where(and(
+        eq(schema.communityMembers.communityId, communityId),
+        eq(schema.communityMembers.userId, userId)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async getCommunityTopics(communityId: string): Promise<CommunityTopic[]> {
+    const result = await this.db
+      .select()
+      .from(schema.communityTopics)
+      .where(eq(schema.communityTopics.communityId, communityId))
+      .orderBy(desc(schema.communityTopics.createdAt));
+    return result;
+  }
+
+  async getCommunityTopic(id: string): Promise<CommunityTopic | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.communityTopics)
+      .where(eq(schema.communityTopics.id, id));
+    return result[0];
+  }
+
+  async createCommunityTopic(topic: InsertCommunityTopic): Promise<CommunityTopic> {
+    const result = await this.db.insert(schema.communityTopics).values(topic).returning();
+    return result[0];
+  }
+
+  async updateCommunityTopic(id: string, updates: Partial<InsertCommunityTopic>): Promise<CommunityTopic | undefined> {
+    const result = await this.db
+      .update(schema.communityTopics)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.communityTopics.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getTopicSubmissions(topicId: string): Promise<TopicSubmission[]> {
+    const result = await this.db
+      .select()
+      .from(schema.topicSubmissions)
+      .where(eq(schema.topicSubmissions.topicId, topicId))
+      .orderBy(desc(schema.topicSubmissions.createdAt));
+    return result;
+  }
+
+  async getTopicSubmission(topicId: string, userId: string): Promise<TopicSubmission | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.topicSubmissions)
+      .where(and(
+        eq(schema.topicSubmissions.topicId, topicId),
+        eq(schema.topicSubmissions.userId, userId)
+      ));
+    return result[0];
+  }
+
+  async getUserSubmissions(userId: string): Promise<TopicSubmission[]> {
+    const result = await this.db
+      .select()
+      .from(schema.topicSubmissions)
+      .where(eq(schema.topicSubmissions.userId, userId))
+      .orderBy(desc(schema.topicSubmissions.createdAt));
+    return result;
+  }
+
+  async createTopicSubmission(submission: InsertTopicSubmission): Promise<TopicSubmission> {
+    const result = await this.db.insert(schema.topicSubmissions).values(submission).returning();
+    return result[0];
+  }
+
+  async markSubmissionReviewed(id: string, reviewerId: string): Promise<TopicSubmission | undefined> {
+    const result = await this.db
+      .update(schema.topicSubmissions)
+      .set({ isReviewed: true, reviewedById: reviewerId, reviewedAt: new Date() })
+      .where(eq(schema.topicSubmissions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getJoinRequests(communityId: string): Promise<JoinRequest[]> {
+    const result = await this.db
+      .select()
+      .from(schema.joinRequests)
+      .where(and(
+        eq(schema.joinRequests.communityId, communityId),
+        eq(schema.joinRequests.status, 'pending')
+      ))
+      .orderBy(desc(schema.joinRequests.createdAt));
+    return result;
+  }
+
+  async getJoinRequest(communityId: string, userId: string): Promise<JoinRequest | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.joinRequests)
+      .where(and(
+        eq(schema.joinRequests.communityId, communityId),
+        eq(schema.joinRequests.userId, userId)
+      ));
+    return result[0];
+  }
+
+  async getUserPendingJoinRequests(userId: string): Promise<JoinRequest[]> {
+    const result = await this.db
+      .select()
+      .from(schema.joinRequests)
+      .where(and(
+        eq(schema.joinRequests.userId, userId),
+        eq(schema.joinRequests.status, 'pending')
+      ))
+      .orderBy(desc(schema.joinRequests.createdAt));
+    return result;
+  }
+
+  async createJoinRequest(request: InsertJoinRequest): Promise<JoinRequest> {
+    const result = await this.db.insert(schema.joinRequests).values(request).returning();
+    return result[0];
+  }
+
+  async updateJoinRequest(id: string, updates: { status: string; respondedAt: Date; respondedById: string }): Promise<JoinRequest | undefined> {
+    const result = await this.db
+      .update(schema.joinRequests)
+      .set(updates)
+      .where(eq(schema.joinRequests.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getExploreItems(type?: ExploreContentType, authorId?: string): Promise<ExploreItem[]> {
+    const conditions = [];
+    if (type) conditions.push(eq(schema.exploreItems.type, type));
+    if (authorId) conditions.push(eq(schema.exploreItems.authorId, authorId));
+    
+    const result = await this.db
+      .select()
+      .from(schema.exploreItems)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(schema.exploreItems.createdAt));
+    return result;
+  }
+
+  async getExploreItem(id: string): Promise<ExploreItem | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.exploreItems)
+      .where(eq(schema.exploreItems.id, id));
+    return result[0];
+  }
+
+  async createExploreItem(item: InsertExploreItem): Promise<ExploreItem> {
+    const result = await this.db.insert(schema.exploreItems).values(item as any).returning();
+    return result[0];
+  }
+
+  async deleteExploreItem(id: string): Promise<boolean> {
+    const result = await this.db
+      .delete(schema.exploreItems)
+      .where(eq(schema.exploreItems.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getExploreLikes(itemId: string): Promise<ExploreLike[]> {
+    const result = await this.db
+      .select()
+      .from(schema.exploreLikes)
+      .where(eq(schema.exploreLikes.exploreItemId, itemId));
+    return result;
+  }
+
+  async isExploreLiked(itemId: string, userId: string): Promise<boolean> {
+    const result = await this.db
+      .select()
+      .from(schema.exploreLikes)
+      .where(and(
+        eq(schema.exploreLikes.exploreItemId, itemId),
+        eq(schema.exploreLikes.userId, userId)
+      ));
+    return result.length > 0;
+  }
+
+  async toggleExploreLike(itemId: string, userId: string): Promise<boolean> {
+    const isLiked = await this.isExploreLiked(itemId, userId);
+    if (isLiked) {
+      await this.db
+        .delete(schema.exploreLikes)
+        .where(and(
+          eq(schema.exploreLikes.exploreItemId, itemId),
+          eq(schema.exploreLikes.userId, userId)
+        ));
+      await this.db
+        .update(schema.exploreItems)
+        .set({ likesCount: sql`${schema.exploreItems.likesCount} - 1` })
+        .where(eq(schema.exploreItems.id, itemId));
+      return false;
+    } else {
+      await this.db.insert(schema.exploreLikes).values({ exploreItemId: itemId, userId });
+      await this.db
+        .update(schema.exploreItems)
+        .set({ likesCount: sql`${schema.exploreItems.likesCount} + 1` })
+        .where(eq(schema.exploreItems.id, itemId));
+      return true;
+    }
+  }
+
+  async getExploreSaves(userId: string): Promise<ExploreSave[]> {
+    const result = await this.db
+      .select()
+      .from(schema.exploreSaves)
+      .where(eq(schema.exploreSaves.userId, userId));
+    return result;
+  }
+
+  async isExploreSaved(itemId: string, userId: string): Promise<boolean> {
+    const result = await this.db
+      .select()
+      .from(schema.exploreSaves)
+      .where(and(
+        eq(schema.exploreSaves.exploreItemId, itemId),
+        eq(schema.exploreSaves.userId, userId)
+      ));
+    return result.length > 0;
+  }
+
+  async toggleExploreSave(itemId: string, userId: string): Promise<boolean> {
+    const isSaved = await this.isExploreSaved(itemId, userId);
+    if (isSaved) {
+      await this.db
+        .delete(schema.exploreSaves)
+        .where(and(
+          eq(schema.exploreSaves.exploreItemId, itemId),
+          eq(schema.exploreSaves.userId, userId)
+        ));
+      await this.db
+        .update(schema.exploreItems)
+        .set({ savesCount: sql`${schema.exploreItems.savesCount} - 1` })
+        .where(eq(schema.exploreItems.id, itemId));
+      return false;
+    } else {
+      await this.db.insert(schema.exploreSaves).values({ exploreItemId: itemId, userId });
+      await this.db
+        .update(schema.exploreItems)
+        .set({ savesCount: sql`${schema.exploreItems.savesCount} + 1` })
+        .where(eq(schema.exploreItems.id, itemId));
+      return true;
+    }
+  }
+
+  async getPeerReviewLikes(reviewId: string): Promise<PeerReviewLike[]> {
+    const result = await this.db
+      .select()
+      .from(schema.peerReviewLikes)
+      .where(eq(schema.peerReviewLikes.reviewId, reviewId));
+    return result;
+  }
+
+  async getPeerReviewLikeCount(reviewId: string): Promise<number> {
+    const result = await this.db
+      .select()
+      .from(schema.peerReviewLikes)
+      .where(eq(schema.peerReviewLikes.reviewId, reviewId));
+    return result.length;
+  }
+
+  async isPeerReviewLiked(reviewId: string, userId: string): Promise<boolean> {
+    const result = await this.db
+      .select()
+      .from(schema.peerReviewLikes)
+      .where(and(
+        eq(schema.peerReviewLikes.reviewId, reviewId),
+        eq(schema.peerReviewLikes.userId, userId)
+      ));
+    return result.length > 0;
+  }
+
+  async togglePeerReviewLike(reviewId: string, userId: string): Promise<boolean> {
+    const isLiked = await this.isPeerReviewLiked(reviewId, userId);
+    if (isLiked) {
+      await this.db
+        .delete(schema.peerReviewLikes)
+        .where(and(
+          eq(schema.peerReviewLikes.reviewId, reviewId),
+          eq(schema.peerReviewLikes.userId, userId)
+        ));
+      return false;
+    } else {
+      await this.db.insert(schema.peerReviewLikes).values({ reviewId, userId });
+      return true;
+    }
   }
 }
 
