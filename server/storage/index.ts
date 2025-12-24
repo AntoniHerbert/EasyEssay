@@ -11,6 +11,8 @@ import { IEssayLikeStore } from './essayLikes/essayLike.store';
 import { IInspirationStore } from './inspirations/inspiration.store'; 
 import { IFriendshipStore } from './friendships/friendship.store'; 
 import { IMessageStore } from './messages/message.store';
+import { IExploreStore } from "./explore/explore.store";
+import { ICommunityStore } from "./community/community.store";
 
 import { UserDbStore } from './users/user.db.store';
 import { ProfileDbStore } from './profiles/profile.db.store';
@@ -20,6 +22,8 @@ import { EssayLikeDbStore } from './essayLikes/essayLike.db.store';
 import { InspirationDbStore } from './inspirations/inspiration.db.store'; 
 import { FriendshipDbStore } from './friendships/friendship.db.store'; 
 import { MessageDbStore } from './messages/message.db.store'; 
+import { ExploreDbStore } from "./explore/explore.db.store";
+import { CommunityDbStore } from "./community/community.db.store";
 
 import { UserMemStore } from './users/user.mem.store';
 import { ProfileMemStore } from './profiles/profile.mem.store';
@@ -29,8 +33,12 @@ import { EssayLikeMemStore } from './essayLikes/essayLike.mem.store';
 import { InspirationMemStore } from './inspirations/inspiration.mem.store'; 
 import { FriendshipMemStore } from './friendships/friendship.mem.store';
 import { MessageMemStore } from './messages/message.mem.store';
+import { ExploreMemStore } from "./explore/explore.mem.store";
+import { CommunityMemStore } from "./community/community.mem.store";
 
 import { DbTransactionManager, MemTransactionManager, type ITransactionManager } from "./transaction";
+
+
 
 export type DrizzleDb = NodePgDatabase<typeof schema>;
 
@@ -42,6 +50,8 @@ let essayLikeStore: IEssayLikeStore;
 let inspirationStore: IInspirationStore; 
 let friendshipStore: IFriendshipStore;
 let messageStore: IMessageStore; 
+let exploreStore: IExploreStore;
+let communityStore: ICommunityStore;
 let transactionManager: ITransactionManager; 
 
 
@@ -55,6 +65,8 @@ if (process.env.NODE_ENV === 'test') {
   inspirationStore = new InspirationMemStore();
   friendshipStore = new FriendshipMemStore();
   messageStore = new MessageMemStore(); 
+  exploreStore = new ExploreMemStore();
+  communityStore = new CommunityMemStore();
   transactionManager = new MemTransactionManager(); 
 
 } else {
@@ -71,6 +83,8 @@ if (process.env.NODE_ENV === 'test') {
   inspirationStore = new InspirationDbStore(db); 
   friendshipStore = new FriendshipDbStore(db); 
   messageStore = new MessageDbStore(db); 
+  exploreStore = new ExploreDbStore(db);  
+  communityStore = new CommunityDbStore(db);
   transactionManager = new DbTransactionManager(db);
 }
 
@@ -83,6 +97,8 @@ export {
   inspirationStore,
   friendshipStore,
   messageStore,
+  exploreStore,
+  communityStore,
   transactionManager,
 };
 

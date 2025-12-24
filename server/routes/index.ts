@@ -7,6 +7,8 @@ import messageRouter from "./message.routes";
 import peerReviewRouter from "./peerReview.routes";
 import inspirationRouter from "./inspiration.routes";
 import userRouter from "./user.routes";
+import exploreRoutes from "./explore.routes";
+import communityRoutes from "./community.routes";
 
 const router = Router();
 
@@ -19,5 +21,7 @@ router.use("/messages", messageRouter);
 router.use("/peer-reviews", peerReviewRouter);  
 router.use("/inspirations", inspirationRouter);
 router.use("/users", userRouter);
+router.use("/explore", exploreRoutes);
+router.use("/communities", communityRoutes);
 
 export default router;

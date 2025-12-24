@@ -8,7 +8,9 @@ import {
   inspirationStore,
   friendshipStore,
   messageStore,
-  transactionManager
+  exploreStore,
+  transactionManager,
+  communityStore,
 } from "../storage";
 
 // 2. Importa as Classes dos Serviços
@@ -21,7 +23,9 @@ import { EssayLikeService } from "./essayLike.service";
 import { InspirationService } from "./inspiration.service";
 import { FriendshipService } from "./friendship.service";
 import { MessageService } from "./message.service";
+import { ExploreService } from "./explore.service";
 import { SocketNotificationService } from "./notifications/socket.notification.service";
+import { CommunityService } from "./community.service";
 
 // 3. Instancia os Serviços injetando as dependências na ordem correta
 export const notificationService = new SocketNotificationService();
@@ -51,3 +55,14 @@ export const friendshipService = new FriendshipService(friendshipStore, profileS
 
 // MessageService precisa de message
 export const messageService = new MessageService(notificationService, messageStore, transactionManager);
+
+export const communityService = new CommunityService(
+    communityStore, 
+    profileStore, 
+    userStore,
+    essayStore, 
+    peerReviewStore, 
+    transactionManager
+);
+
+export const exploreService = new ExploreService(exploreStore, transactionManager);
