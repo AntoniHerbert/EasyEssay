@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { EssayEditor } from "@/components/essay-editor";
 import { EssayLibrary } from "@/components/essay-library";
 import { CommunityFeed } from "@/components/community-feed";
-import { InspirationsFeed } from "@/components/inspirations-feed";
+import { ExploreFeed } from "@/components/explore-feed";
 import { UserProfile } from "@/components/user-profile";
 import { MobileNavigation } from "@/components/mobile-navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { type Essay } from "@shared/schema";
-import { FileText, Folder, Users, User, Lightbulb } from "lucide-react";
+import { FileText, Folder, Users, User, Compass } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 
@@ -18,6 +19,22 @@ export default function Home() {
   const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
   const [editingEssayId, setEditingEssayId] = useState<string>("");
   const [, setLocation] = useLocation();
+
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const topicId = searchParams.get("topicId");
+  const sectionParam = searchParams.get("section");
+
+  useEffect(() => {
+    if (sectionParam === "community") {
+      setActiveSection("community");
+    } else if (sectionParam === "write") {
+      setEditingEssayId("");
+      setActiveSection("write");
+    } else if (topicId) {
+      setActiveSection("write");
+    }
+  }, [topicId, sectionParam]);
 
   useEffect(() => {
     const navigateToMessages = localStorage.getItem('navigateToMessages');
@@ -30,7 +47,7 @@ export default function Home() {
   const navItems = [
     { id: "write", label: t('nav.write'), icon: FileText },
     { id: "library", label: t('nav.library'), icon: Folder },
-    { id: "inspirations", label: t('nav.inspirations'), icon: Lightbulb },
+    { id: "explore", label: t('nav.explore'), icon: Compass },
     { id: "community", label: t('nav.community'), icon: Users },
     { id: "profile", label: t('nav.profile'), icon: User },
   ];
@@ -57,8 +74,8 @@ export default function Home() {
         );
       case "library":
         return <EssayLibrary onEditEssay={handleEditEssay} onViewEssay={handleViewEssay} />;
-      case "inspirations":
-        return <InspirationsFeed />;
+      case "explore":
+        return <ExploreFeed />;
       case "community":
         return <CommunityFeed />;
       case "profile":

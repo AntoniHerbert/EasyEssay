@@ -242,7 +242,7 @@ community: {
 nav: {
   write: "Write",
   library: "Library",
-  inspirations: "Inspirations",
+  explore: "Explore",
   community: "Community",
   profile: "Profile"
 },
