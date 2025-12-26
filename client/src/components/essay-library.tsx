@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next"; // <--- Importado
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ interface EnrichedSubmission extends TopicSubmission {
 }
 
 export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
+  const { t, i18n } = useTranslation(); // <--- Hook
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -69,7 +71,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
 
   const filteredEssays = (essays as Essay[]).filter((essay: Essay) => {
     const matchesSearch = essay.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         essay.content.toLowerCase().includes(searchQuery.toLowerCase());
+                          essay.content.toLowerCase().includes(searchQuery.toLowerCase());
     
     const submission = essaySubmissionMap.get(essay.id);
     
@@ -99,14 +101,14 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/essays?authorId=${user?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/submissions"] });
       toast({
-        title: "Essay deleted",
-        description: "The essay has been deleted successfully.",
+        title: t('library.toast.deleted_title'),
+        description: t('library.toast.deleted_desc'),
       });
     },
     onError: () => {
       toast({
-        title: "Delete failed",
-        description: "Failed to delete essay. Please try again.",
+        title: t('library.toast.delete_failed_title'),
+        description: t('library.toast.delete_failed_desc'),
         variant: "destructive",
       });
     },
@@ -120,16 +122,18 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       const updatedEssay = await response.json();
       queryClient.invalidateQueries({ queryKey: [`/api/essays?authorId=${user?.id}`] });
       toast({
-        title: updatedEssay.isPublic ? "Essay published" : "Essay unpublished",
+        title: updatedEssay.isPublic 
+          ? t('library.toast.published_title') 
+          : t('library.toast.unpublished_title'),
         description: updatedEssay.isPublic 
-          ? "Your essay is now visible to the community."
-          : "Your essay is now private.",
+          ? t('library.toast.published_desc')
+          : t('library.toast.unpublished_desc'),
       });
     },
     onError: () => {
       toast({
-        title: "Action failed",
-        description: "Failed to update essay visibility. Please try again.",
+        title: t('library.toast.action_failed_title'),
+        description: t('library.toast.action_failed_desc'),
         variant: "destructive",
       });
     },
@@ -140,21 +144,21 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       return (
         <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 text-xs rounded-full">
           <Globe className="w-3 h-3 mr-1 inline" />
-          Published
+          {t('library.status.published')}
         </span>
       );
     } else if (essay.isAnalyzed) {
       return (
         <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100 text-xs rounded-full">
           <Check className="w-3 h-3 mr-1 inline" />
-          Analyzed
+          {t('library.status.analyzed')}
         </span>
       );
     } else {
       return (
         <span className="px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100 text-xs rounded-full">
           <Clock className="w-3 h-3 mr-1 inline" />
-          Draft
+          {t('library.status.draft')}
         </span>
       );
     }
@@ -194,15 +198,15 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold mb-2">My Essay Library</h2>
-          <p className="text-muted-foreground">Manage and review your written essays</p>
+          <h2 className="text-2xl font-bold mb-2">{t('library.header.title')}</h2>
+          <p className="text-muted-foreground">{t('library.header.subtitle')}</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search essays..."
+              placeholder={t('library.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2"
@@ -211,7 +215,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
           </div>
           <Button onClick={() => onEditEssay?.("")} data-testid="button-new-essay">
             <Plus className="w-4 h-4 mr-2" />
-            New Essay
+            {t('library.new_essay')}
           </Button>
         </div>
       </div>
@@ -220,10 +224,10 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
           {[
-            { key: "all", label: "All Essays" },
-            { key: "drafts", label: "Drafts" },
-            { key: "communities", label: "Communities" },
-            { key: "analyzed", label: "Analyzed" },
+            { key: "all", label: t('library.filters.all') },
+            { key: "drafts", label: t('library.filters.drafts') },
+            { key: "communities", label: t('library.filters.communities') },
+            { key: "analyzed", label: t('library.filters.analyzed') },
           ].map((filter) => (
             <Button
               key={filter.key}
@@ -247,10 +251,10 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
         {activeFilter === "communities" && communities.length > 0 && (
           <Select value={communityFilter} onValueChange={setCommunityFilter}>
             <SelectTrigger className="w-[200px]" data-testid="select-community-filter">
-              <SelectValue placeholder="Filter by community" />
+              <SelectValue placeholder={t('library.community_filter.placeholder')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Communities</SelectItem>
+              <SelectItem value="all">{t('library.community_filter.all')}</SelectItem>
               {communities.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
@@ -264,16 +268,19 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
         <Card>
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">No essays found</h3>
+            <h3 className="text-lg font-medium mb-2">{t('library.empty.title')}</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery ? "Try adjusting your search terms." : 
-               activeFilter === "communities" ? "You haven't submitted any essays to communities yet." :
-               "Start writing your first essay!"}
+              {searchQuery 
+                ? t('library.empty.desc_search') 
+                : activeFilter === "communities" 
+                  ? t('library.empty.no_community_essays')
+                  : t('library.empty.desc_default')
+              }
             </p>
             {!searchQuery && activeFilter !== "communities" && (
               <Button onClick={() => onEditEssay?.("")} data-testid="button-create-first">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Essay
+                {t('library.empty.create')}
               </Button>
             )}
           </CardContent>
@@ -314,18 +321,18 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Essay?</AlertDialogTitle>
+                          <AlertDialogTitle>{t('library.alert.delete_title')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete "{essay.title}". This action cannot be undone.
+                            {t('library.alert.delete_desc', { title: essay.title })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel>{t('library.alert.cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => deleteEssayMutation.mutate(essay.id)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            Delete
+                            {t('library.alert.confirm')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -338,8 +345,9 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                 </p>
                 
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                  <span>{new Date(essay.updatedAt).toLocaleDateString()}</span>
-                  <span>{essay.wordCount} words</span>
+                  {/* Data localizada */}
+                  <span>{new Date(essay.updatedAt).toLocaleDateString(i18n.language)}</span>
+                  <span>{t('library.card.words', { count: essay.wordCount })}</span>
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -356,7 +364,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                         data-testid={`button-view-${essay.id}`}
                       >
                         <Eye className="w-4 h-4 mr-1" />
-                        View
+                        {t('library.card.view')}
                       </Button>
                     </Link>
                   ) : (
@@ -367,7 +375,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                       data-testid={`button-edit-${essay.id}`}
                     >
                       <Edit className="w-4 h-4 mr-1" />
-                      Edit
+                      {t('library.card.edit')}
                     </Button>
                   )}
                 </div>

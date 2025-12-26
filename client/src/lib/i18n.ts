@@ -94,6 +94,14 @@ editor: {
   analyze: "Analyze",
   analyzing: "Analyzing...",
   untitled: "Untitled Essay",
+  topic_context: "Writing for topic:",
+  back: "Back",
+  submit_topic: "Submit to Topic",
+  submitting: "Submitting...",
+  template_mode: "Template Mode",
+  exit_template: "Exit Template",
+  rubric_label: "Scoring Rubric: {{name}}",
+  rubric_desc: "AI and community reviewers will score your essay on these categories.",
   placeholders: {
     title: "Essay Title",
     content: "Start writing your essay..."
@@ -108,53 +116,101 @@ editor: {
     analysis_failed: "Analysis failed",
     analysis_failed_default: "Failed to analyze essay. Please try again.",
     content_req_title: "Content required",
-    content_req_desc: "Please add a title and content before analyzing."
+    content_req_desc: "Please add a title and content before analyzing.",
+    submitted_title: "Essay submitted!",
+    submitted_desc: "Your essay has been submitted for review.",
+    submit_failed_title: "Submission failed",
+    submit_failed_desc: "Failed to submit essay. Please try again.",
+    submit_req_desc: "Please add a title and content before submitting."
   }
 },
-inspirations: {
+explore: {
   header: {
-    title: "Inspirations",
-    subtitle: "Discover wisdom from great thinkers and writers"
+    title: "Explore",
+    subtitle: "Discover writing resources, topics, and templates",
+    create_btn: "Create"
   },
+  search_placeholder: "Search...",
   filters: {
-    search: "Search inspirations, authors, or topics...",
-    category: "Category",
-    type: "Type",
-    difficulty: "Difficulty",
-    all_categories: "All Categories",
-    all_types: "All Types",
-    all_levels: "All Levels",
-    clear: "Clear Filters",
-    showing: "Showing {{count}} of {{total}} inspirations"
-  },
-  empty: {
-    title: "No inspirations found",
-    desc_search: "Try adjusting your search or filters.",
-    desc_default: "Check back later for new inspirational content."
-  },
-  card: {
-    read_time: "min read",
-    source: "Source",
-    more_tags: "+{{count}} more"
-  },
-  categories: {
-    literature: "Literature",
-    science: "Science",
-    philosophy: "Philosophy",
-    technology: "Technology",
-    environment: "Environment",
-    history: "History"
+    all: "All",
+    my_content: "My Content",
+    saved: "Saved",
+    category_list: "Categories",
+    essay_topic: "Topics",
+    quote: "Quotes",
+    template: "Templates"
   },
   types: {
-    book: "Book",
-    article: "Article",
+    category_list: "Categories",
+    essay_topic: "Topic",
     quote: "Quote",
-    excerpt: "Excerpt"
+    template: "Template"
   },
-  difficulties: {
-    beginner: "Beginner",
-    intermediate: "Intermediate",
-    advanced: "Advanced"
+  card: {
+    featured: "Featured",
+    total_points: "Total: {{score}} points",
+    copy: "Copy Quote",
+    blanks: "{{count}} blanks",
+    more: "+{{count}} more"
+  },
+  detail: {
+    use_this: "Use This",
+    delete: "Delete",
+    max_score: "Max: {{score}} points",
+    no_desc: "No description provided."
+  },
+  create: {
+    title: "Create New Content",
+    desc: "Add content for others to discover and use.",
+    labels: {
+      type: "Content Type",
+      title: "Title",
+      quote_text: "Quote Text",
+      subtitle: "Subtitle (optional)",
+      desc: "Description",
+      author: "Author",
+      source: "Source (optional)",
+      template: "Template Content",
+      categories: "Categories"
+    },
+    placeholders: {
+      title: "Enter a title...",
+      quote: "Enter the quote...",
+      subtitle: "Brief description...",
+      desc: "Describe the topic in detail...",
+      author: "Who said this?",
+      source: "Book, speech, interview...",
+      template: "Write your template. Use [PLACEHOLDER] for gaps users will fill in.",
+      category_name: "Category name",
+      score: "Max"
+    },
+    hint: "Tip: Use [BRACKETS] to mark areas users should fill in.",
+    add_category: "Add Category",
+    cancel: "Cancel",
+    submit: "Create",
+    submitting: "Creating..."
+  },
+  empty: {
+    title: "No content found",
+    desc_search: "Try adjusting your search or filters.",
+    desc_default: "Be the first to add content!",
+    btn_create: "Create Content"
+  },
+  toast: {
+    created: "Created!",
+    created_desc: "Your content has been added to Explore.",
+    create_failed: "Failed",
+    create_failed_desc: "Could not create content.",
+    deleted: "Deleted",
+    deleted_desc: "Content removed.",
+    copied: "Copied!",
+    copied_desc: "Quote copied to clipboard.",
+    topic_loaded: "Topic loaded",
+    topic_loaded_desc: "Start writing your essay on this topic!",
+    template_loaded: "Template loaded",
+    template_loaded_desc: "Fill in the template to write your essay!",
+    rubric_selected: "Rubric selected",
+    rubric_desc: "Your essay will be scored on: {{categories}}"
   }
 }, 
 library: {
@@ -167,7 +223,7 @@ library: {
   filters: {
     all: "All Essays",
     drafts: "Drafts",
-    published: "Published",
+    communities: "Communities",
     analyzed: "Analyzed"
   },
   status: {
@@ -201,42 +257,178 @@ library: {
     action_failed_desc: "Failed to update essay visibility. Please try again."
   }
 },
-community: {
-  header: {
+community_feed: {
+  tabs: {
+    essays: "Essays",
+    communities: "Communities"
+  },
+  essays: {
     title: "Community Essays",
-    subtitle: "Discover and learn from essays shared by other writers"
+    subtitle: "Discover and learn from essays shared by other writers",
+    no_essays: "No community essays yet",
+    be_first: "Be the first to share your essay with the community!",
+    load_more: "Load More Essays"
   },
-  filters: {
-    all_topics: "All Topics",
-    technology: "Technology",
-    science: "Science",
-    literature: "Literature",
-    environment: "Environment"
+  communities: {
+    title: "Writing Communities",
+    subtitle: "Join communities to write essays on shared topics",
+    create_btn: "Create Community",
+    search_placeholder: "Search communities...",
+    no_communities: "No communities yet",
+    be_first_community: "Be the first to create a writing community!",
+    back_btn: "Back to Communities",
+    filters: {
+      all: "All Communities",
+      member: "My Communities",
+      all_topics: "All Topics",
+      technology: "Technology",
+      science: "Science",
+      literature: "Literature",
+      environment: "Environment",
+      sort_recent: "Most Recent",
+      sort_popular: "Most Popular",
+      sort_rated: "Highest Rated"
+    },
+    card: {
+      public: "Public",
+      private: "Private",
+      leader: "Leader",
+      member: "Member",
+      members_count: "{{count}} members",
+      led_by: "Led by {{name}}",
+      pending: "Pending",
+      join: "Join",
+      request_join: "Request to Join"
+    }
   },
-  topics: {
-    technology: "Technology",
-    environment: "Environment",
-    literature: "Literature",
-    science: "Science",
-    general: "General"
+  detail: {
+    share_code: "Share Code:",
+    code_copied: "Code copied!",
+    code_copied_desc: "Share this code with others to join your community.",
+    transfer_leadership: "Transfer Leadership",
+    leave: "Leave",
+    topics_title: "Topics",
+    create_topic: "Create Topic",
+    members_title: "Members ({{count}})",
+    leader_badge: "Leader",
+    primary_leader: "Primary Leader",
+    promote: "Promote",
+    demote: "Demote",
+    pending_requests: "Pending Join Requests ({{count}})",
+    no_pending: "No pending requests",
+    requested_on: "Requested {{date}}",
+    approve: "Approve",
+    reject: "Reject"
   },
-  empty: {
-    title: "No community essays yet",
-    desc: "Be the first to share your essay with the community!"
+  topic: {
+    back_btn: "Back to Community",
+    active: "Active",
+    closed: "Closed",
+    due_date: "Due {{date}}",
+    submissions_count: "{{count}} submissions",
+    leader_dashboard: "Leader Dashboard",
+    stats: {
+      submission_rate: "Submission Rate",
+      avg_words: "Average Word Count",
+      review_status: "Review Status",
+      time_review: "Time to Review",
+      words_per_essay: "words per essay",
+      reviewed: "reviewed",
+      pending_essays: "{{count}} essays pending",
+      done: "Done!",
+      not_submitted: "Not Yet Submitted ({{count}})"
+    },
+    submit_panel: {
+      title: "Submit Your Essay",
+      desc: "Write an essay for this topic",
+      btn: "Write Essay",
+      submitted_msg: "You have submitted an essay for this topic"
+    },
+    submissions_list: {
+      title: "Submissions",
+      title_leader: "Submitted",
+      no_submissions: "No submissions yet",
+      be_first: "Be the first to submit an essay for this topic!",
+      pending_review: "Pending Review",
+      reviewed: "Reviewed",
+      view_essay: "View Essay →"
+    }
   },
-  card: {
-    min_read: "min read",
-    words: "words"
+  dialogs: {
+    create_community: {
+      title: "Create a New Community",
+      desc: "Create a community where you can post essay topics for members to write about.",
+      name_label: "Community Name",
+      name_placeholder: "Enter community name",
+      desc_label: "Description (optional)",
+      desc_placeholder: "Describe what your community is about",
+      type_label: "Community Type",
+      public_desc: "Anyone can join",
+      private_desc: "Requires approval to join",
+      cancel: "Cancel",
+      create: "Create Community",
+      creating: "Creating..."
+    },
+    create_topic: {
+      title: "Create a New Topic",
+      desc: "Create a topic for your community members to write about.",
+      title_label: "Topic Title",
+      title_placeholder: "Enter topic title",
+      desc_label: "Description (optional)",
+      desc_placeholder: "Describe what you want members to write about",
+      deadline_label: "Deadline (optional)",
+      cancel: "Cancel",
+      create: "Create Topic",
+      creating: "Creating..."
+    },
+    transfer: {
+      title: "Transfer Primary Leadership",
+      desc: "Select a member to become the new primary leader. You will become a regular member after transferring.",
+      current_leader: "Current Leader",
+      cancel: "Cancel",
+      confirm: "Transfer Leadership"
+    }
   },
-  load_more: "Load More Essays",
-  end_of_list: "You've reached the end of the list.",
   toast: {
-    like_failed_title: "Action failed",
-    like_failed_desc: "Failed to update like. Please try again.",
-    request_sent_title: "Friend request sent",
-    request_sent_desc: "Your friend request has been sent successfully!",
-    request_failed_title: "Request failed",
-    request_failed_desc: "Failed to send friend request. Please try again."
+  topic_created: "Topic created",
+  topic_desc: "Your topic has been created for community members to write about!",
+  topic_failed: "Creation failed",
+  topic_failed_desc: "Failed to create topic. Please try again.", 
+  reviewed: "Marked as reviewed",
+  reviewed_desc: "The submission has been marked as reviewed.", 
+  review_failed: "Review failed",
+  review_failed_desc: "Failed to mark as reviewed. Please try again.", 
+  action_failed: "Action failed",
+  like_failed_desc: "Failed to update like. Please try again.",
+  comm_created: "Community created",
+  comm_created_desc: "Your community has been created successfully!",
+  comm_failed: "Creation failed",
+  comm_failed_desc: "Failed to create community. Please try again.",
+  request_sent: "Request sent",
+  request_sent_desc: "Your request to join has been sent to the leader for approval.",
+  joined: "Joined community",
+  joined_desc: "You have joined the community!",
+  join_failed: "Join failed",
+  join_failed_desc: "Failed to join community. Please try again.",
+  left: "Left community",
+  left_desc: "You have left the community.",
+  leave_failed: "Leave failed",
+  leave_failed_desc: "Failed to leave community. Please try again.", 
+  req_approved: "Request approved",
+  req_approved_desc: "The user has been added to the community.", 
+  approve_failed_desc: "Failed to approve request.", 
+  req_rejected: "Request rejected",
+  req_rejected_desc: "The join request has been rejected.",
+  reject_failed_desc: "Failed to reject request.", 
+  promoted: "Member promoted",
+  promoted_desc: "The member is now a leader.", 
+  promote_failed_desc: "Failed to promote member.", 
+  demoted: "Leader demoted",
+  demoted_desc: "The leader is now a regular member.", 
+  demote_failed_desc: "Failed to demote leader.", 
+  transferred: "Leadership transferred",
+  transferred_desc: "You have transferred primary leadership to another member.",
+  transfer_failed_desc: "Failed to transfer leadership."
   }
 },
 nav: {
@@ -478,6 +670,14 @@ editor: {
   analyze: "Analisar",
   analyzing: "Analisando...",
   untitled: "Redação Sem Título",
+  topic_context: "Escrevendo para o tópico:",
+  back: "Voltar",
+  submit_topic: "Enviar para o Tópico",
+  submitting: "Enviando...",
+  template_mode: "Modo Modelo",
+  exit_template: "Sair do Modelo",
+  rubric_label: "Rubrica de Avaliação: {{name}}",
+  rubric_desc: "A IA e os revisores da comunidade avaliarão sua redação nestas categorias.",
   placeholders: {
     title: "Título da Redação",
     content: "Comece a escrever sua redação..."
@@ -492,54 +692,127 @@ editor: {
     analysis_failed: "Falha na análise",
     analysis_failed_default: "Falha ao analisar redação. Tente novamente.",
     content_req_title: "Conteúdo necessário",
-    content_req_desc: "Por favor, adicione título e conteúdo antes de analisar."
+    content_req_desc: "Por favor, adicione título e conteúdo antes de analisar.",
+    submitted_title: "Redação enviada!",
+    submitted_desc: "Sua redação foi enviada para revisão.",
+    submit_failed_title: "Falha no envio",
+    submit_failed_desc: "Falha ao enviar redação. Tente novamente.",
+    submit_req_desc: "Por favor, adicione título e conteúdo antes de enviar."
   }
 },
 
-  inspirations: {
+  explore: {
   header: {
-    title: "Inspirações",
-    subtitle: "Descubra a sabedoria de grandes pensadores e escritores"
+    title: "Explorar",
+    subtitle: "Descubra recursos de escrita, tópicos e modelos",
+    create_btn: "Criar"
   },
+  search_placeholder: "Buscar...",
   filters: {
-    search: "Buscar inspirações, autores ou tópicos...",
-    category: "Categoria",
-    type: "Tipo",
-    difficulty: "Dificuldade",
-    all_categories: "Todas Categorias",
-    all_types: "Todos Tipos",
-    all_levels: "Todos Níveis",
-    clear: "Limpar Filtros",
-    showing: "Mostrando {{count}} de {{total}} inspirações"
-  },
-  empty: {
-    title: "Nenhuma inspiração encontrada",
-    desc_search: "Tente ajustar sua busca ou filtros.",
-    desc_default: "Verifique mais tarde por novos conteúdos inspiradores."
-  },
-  card: {
-    read_time: "min de leitura",
-    source: "Fonte",
-    more_tags: "+{{count}} mais"
-  },
-  categories: {
-    literature: "Literatura",
-    science: "Ciência",
-    philosophy: "Filosofia",
-    technology: "Tecnologia",
-    environment: "Meio Ambiente",
-    history: "História"
+    all: "Todos",
+    my_content: "Meus Conteúdos",
+    saved: "Salvos",
+    category_list: "Categorias",
+    essay_topic: "Tópicos",
+    quote: "Citações",
+    template: "Modelos"
   },
   types: {
-    book: "Livro",
-    article: "Artigo",
+    category_list: "Categorias",
+    essay_topic: "Tópico",
     quote: "Citação",
-    excerpt: "Trecho"
+    template: "Modelo"
   },
-  difficulties: {
-    beginner: "Iniciante",
-    intermediate: "Intermediário",
-    advanced: "Avançado"
+  card: {
+    featured: "Destaque",
+    total_points: "Total: {{score}} pontos",
+    copy: "Copiar Citação",
+    blanks: "{{count}} lacunas",
+    more: "+{{count}} mais"
+  },
+  detail: {
+    use_this: "Usar Isto",
+    delete: "Excluir",
+    max_score: "Máx: {{score}} pontos",
+    no_desc: "Nenhuma descrição fornecida."
+  },
+  create: {
+    title: "Criar Novo Conteúdo",
+    desc: "Adicione conteúdo para outros descobrirem e usarem.",
+    labels: {
+      type: "Tipo de Conteúdo",
+      title: "Título",
+      quote_text: "Texto da Citação",
+      subtitle: "Subtítulo (opcional)",
+      desc: "Descrição",
+      author: "Autor",
+      source: "Fonte (opcional)",
+      template: "Conteúdo do Modelo",
+      categories: "Categorias"
+    },
+    placeholders: {
+      title: "Digite um título...",
+      quote: "Digite a citação...",
+      subtitle: "Breve descrição...",
+      desc: "Descreva o tópico em detalhes...",
+      author: "Quem disse isso?",
+      source: "Livro, discurso, entrevista...",
+      template: "Escreva seu modelo. Use [PLACEHOLDER] para lacunas.",
+      category_name: "Nome da categoria",
+      score: "Máx"
+    },
+    hint: "Dica: Use [COLCHETES] para marcar áreas que os usuários devem preencher.",
+    add_category: "Adicionar Categoria",
+    cancel: "Cancelar",
+    submit: "Criar",
+    submitting: "Criando..."
+  },
+  empty: {
+    title: "Nenhum conteúdo encontrado",
+    desc_search: "Tente ajustar sua busca ou filtros.",
+    desc_default: "Seja o primeiro a adicionar conteúdo!",
+    btn_create: "Criar Conteúdo"
+  },
+  toast: {
+  topic_created: "Tópico criado",
+  topic_desc: "Seu tópico foi criado para os membros da comunidade!",
+  topic_failed: "Falha na criação",
+  topic_failed_desc: "Falha ao criar tópico. Tente novamente.", 
+  reviewed: "Marcado como revisado",
+  reviewed_desc: "O envio foi marcado como revisado.", 
+  review_failed: "Falha na revisão",
+  review_failed_desc: "Falha ao marcar como revisado. Tente novamente.", 
+  action_failed: "Ação falhou",
+  like_failed_desc: "Falha ao atualizar curtida. Tente novamente.",
+  comm_created: "Comunidade criada",
+  comm_created_desc: "Sua comunidade foi criada com sucesso!",
+  comm_failed: "Falha na criação",
+  comm_failed_desc: "Falha ao criar comunidade. Tente novamente.", 
+  request_sent: "Solicitação enviada",
+  request_sent_desc: "Sua solicitação foi enviada para aprovação do líder.",
+  joined: "Entrou na comunidade",
+  joined_desc: "Você entrou na comunidade!",
+  join_failed: "Falha ao entrar",
+  join_failed_desc: "Falha ao entrar na comunidade. Tente novamente.", 
+  left: "Saiu da comunidade",
+  left_desc: "Você saiu da comunidade.",
+  leave_failed: "Falha ao sair",
+  leave_failed_desc: "Falha ao sair da comunidade. Tente novamente.", 
+  req_approved: "Solicitação aprovada",
+  req_approved_desc: "O usuário foi adicionado à comunidade.", 
+  approve_failed_desc: "Falha ao aprovar solicitação.", 
+  req_rejected: "Solicitação rejeitada",
+  req_rejected_desc: "A solicitação de entrada foi rejeitada.", 
+  reject_failed_desc: "Falha ao rejeitar solicitação.",
+  promoted: "Membro promovido",
+  promoted_desc: "O membro agora é um líder.",
+  promote_failed_desc: "Falha ao promover membro.",
+  demoted: "Líder rebaixado",
+  demoted_desc: "O líder agora é um membro comum.", 
+  demote_failed_desc: "Falha ao rebaixar líder.", 
+  transferred: "Liderança transferida",
+  transferred_desc: "Você transferiu a liderança principal para outro membro.",
+  transfer_failed_desc: "Falha ao transferir liderança." 
   }
 },
 library: {
@@ -552,7 +825,7 @@ library: {
   filters: {
     all: "Todas",
     drafts: "Rascunhos",
-    published: "Publicadas",
+    communities: "Comunidades",
     analyzed: "Analisadas"
   },
   status: {
@@ -586,48 +859,168 @@ library: {
     action_failed_desc: "Falha ao atualizar visibilidade. Tente novamente."
   }
 },
-community: {
-  header: {
+community_feed: {
+  tabs: {
+    essays: "Redações",
+    communities: "Comunidades"
+  },
+  essays: {
     title: "Redações da Comunidade",
-    subtitle: "Descubra e aprenda com redações compartilhadas por outros escritores"
+    subtitle: "Descubra e aprenda com redações compartilhadas por outros escritores",
+    no_essays: "Nenhuma redação da comunidade ainda",
+    be_first: "Seja o primeiro a compartilhar sua redação com a comunidade!",
+    load_more: "Carregar Mais Redações"
   },
-  filters: {
-    all_topics: "Todos os Tópicos",
-    technology: "Tecnologia",
-    science: "Ciência",
-    literature: "Literatura",
-    environment: "Meio Ambiente"
+  communities: {
+    title: "Comunidades de Escrita",
+    subtitle: "Junte-se a comunidades para escrever sobre tópicos compartilhados",
+    create_btn: "Criar Comunidade",
+    search_placeholder: "Buscar comunidades...",
+    no_communities: "Nenhuma comunidade ainda",
+    be_first_community: "Seja o primeiro a criar uma comunidade de escrita!",
+    back_btn: "Voltar para Comunidades",
+    filters: {
+      all: "Todas",
+      member: "Minhas Comunidades",
+      all_topics: "Todos os Tópicos",
+      technology: "Tecnologia",
+      science: "Ciência",
+      literature: "Literatura",
+      environment: "Meio Ambiente",
+      sort_recent: "Mais Recentes",
+      sort_popular: "Mais Populares",
+      sort_rated: "Mais Bem Avaliadas"
+    },
+    card: {
+      public: "Pública",
+      private: "Privada",
+      leader: "Líder",
+      member: "Membro",
+      members_count: "{{count}} membros",
+      led_by: "Liderada por {{name}}",
+      pending: "Pendente",
+      join: "Entrar",
+      request_join: "Solicitar Entrada"
+    }
   },
-  topics: {
-    technology: "Tecnologia",
-    environment: "Meio Ambiente",
-    literature: "Literatura",
-    science: "Ciência",
-    general: "Geral"
+  detail: {
+    share_code: "Código:",
+    code_copied: "Código copiado!",
+    code_copied_desc: "Compartilhe este código com outros para entrarem na sua comunidade.",
+    transfer_leadership: "Transferir Liderança",
+    leave: "Sair",
+    topics_title: "Tópicos",
+    create_topic: "Criar Tópico",
+    members_title: "Membros ({{count}})",
+    leader_badge: "Líder",
+    primary_leader: "Líder Principal",
+    promote: "Promover",
+    demote: "Rebaixar",
+    pending_requests: "Solicitações Pendentes ({{count}})",
+    no_pending: "Nenhuma solicitação pendente",
+    requested_on: "Solicitado em {{date}}",
+    approve: "Aprovar",
+    reject: "Rejeitar"
   },
-  empty: {
-    title: "Nenhuma redação da comunidade ainda",
-    desc: "Seja o primeiro a compartilhar sua redação com a comunidade!"
+  topic: {
+    back_btn: "Voltar para Comunidade",
+    active: "Ativo",
+    closed: "Fechado",
+    due_date: "Vence em {{date}}",
+    submissions_count: "{{count}} envios",
+    leader_dashboard: "Painel do Líder",
+    stats: {
+      submission_rate: "Taxa de Envio",
+      avg_words: "Média de Palavras",
+      review_status: "Status de Revisão",
+      time_review: "Tempo para Revisar",
+      words_per_essay: "palavras por redação",
+      reviewed: "revisados",
+      pending_essays: "{{count}} redações pendentes",
+      done: "Pronto!",
+      not_submitted: "Não Enviaram ({{count}})"
+    },
+    submit_panel: {
+      title: "Envie sua Redação",
+      desc: "Escreva uma redação para este tópico",
+      btn: "Escrever Redação",
+      submitted_msg: "Você já enviou uma redação para este tópico"
+    },
+    submissions_list: {
+      title: "Envios",
+      title_leader: "Enviados",
+      no_submissions: "Nenhum envio ainda",
+      be_first: "Seja o primeiro a enviar uma redação para este tópico!",
+      pending_review: "Aguardando Revisão",
+      reviewed: "Revisado",
+      view_essay: "Ver Redação →"
+    }
   },
-  card: {
-    min_read: "min de leitura",
-    words: "palavras"
+  dialogs: {
+    create_community: {
+      title: "Criar Nova Comunidade",
+      desc: "Crie uma comunidade onde você pode postar tópicos para os membros escreverem.",
+      name_label: "Nome da Comunidade",
+      name_placeholder: "Digite o nome da comunidade",
+      desc_label: "Descrição (opcional)",
+      desc_placeholder: "Descreva sobre o que é sua comunidade",
+      type_label: "Tipo de Comunidade",
+      public_desc: "Qualquer um pode entrar",
+      private_desc: "Requer aprovação para entrar",
+      cancel: "Cancelar",
+      create: "Criar Comunidade",
+      creating: "Criando..."
+    },
+    create_topic: {
+      title: "Criar Novo Tópico",
+      desc: "Crie um tópico para os membros da sua comunidade escreverem sobre.",
+      title_label: "Título do Tópico",
+      title_placeholder: "Digite o título do tópico",
+      desc_label: "Descrição (opcional)",
+      desc_placeholder: "Descreva sobre o que você quer que escrevam",
+      deadline_label: "Prazo (opcional)",
+      cancel: "Cancelar",
+      create: "Criar Tópico",
+      creating: "Criando..."
+    },
+    transfer: {
+      title: "Transferir Liderança Principal",
+      desc: "Selecione um membro para se tornar o novo líder principal. Você se tornará um membro comum após transferir.",
+      current_leader: "Líder Atual",
+      cancel: "Cancelar",
+      confirm: "Transferir Liderança"
+    }
   },
-  load_more: "Carregar Mais Redações",
-  end_of_list: "Você chegou ao fim da lista.",
   toast: {
-    like_failed_title: "Ação falhou",
-    like_failed_desc: "Falha ao atualizar curtida. Tente novamente.",
-    request_sent_title: "Solicitação enviada",
-    request_sent_desc: "Sua solicitação de amizade foi enviada com sucesso!",
-    request_failed_title: "Falha na solicitação",
-    request_failed_desc: "Falha ao enviar solicitação. Tente novamente."
+    topic_created: "Tópico criado",
+    topic_desc: "Seu tópico foi criado para os membros da comunidade!",
+    topic_failed: "Falha na criação",
+    reviewed: "Marcado como revisado",
+    review_failed: "Falha na revisão",
+    action_failed: "Ação falhou",
+    comm_created: "Comunidade criada",
+    comm_created_desc: "Sua comunidade foi criada com sucesso!",
+    comm_failed: "Falha na criação",
+    request_sent: "Solicitação enviada",
+    request_sent_desc: "Sua solicitação foi enviada para aprovação do líder.",
+    joined: "Entrou na comunidade",
+    joined_desc: "Você entrou na comunidade!",
+    join_failed: "Falha ao entrar",
+    left: "Saiu da comunidade",
+    left_desc: "Você saiu da comunidade.",
+    leave_failed: "Falha ao sair",
+    req_approved: "Solicitação aprovada",
+    req_rejected: "Solicitação rejeitada",
+    promoted: "Membro promovido",
+    demoted: "Líder rebaixado",
+    transferred: "Liderança transferida",
+    transferred_desc: "Você transferiu a liderança principal para outro membro."
   }
 },
 nav: {
   write: "Escrever",
   library: "Biblioteca",
-  inspirations: "Inspirações",
+  explore: "Explorar",
   community: "Comunidade",
   profile: "Perfil"
 },

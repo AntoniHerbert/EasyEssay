@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { type Essay, type CommunityTopic, type RubricCategory } from "@shared/schema";
 import { Save, Wand2, ArrowLeft, X, ListChecks, LayoutTemplate } from "lucide-react";
-import { useLocation, useSearch, Link } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 import { useTranslation } from "react-i18next"; 
-
 
 interface SelectedRubric {
   name: string;
   categories: RubricCategory[];
 }
-
 
 interface EssayEditorProps {
   essayId?: string;
@@ -33,7 +31,7 @@ interface TemplatePart {
 
 export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t } = useTranslation(); 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -172,7 +170,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     mutationFn: async () => {
       const finalContent = templateMode ? buildContentFromTemplate : content;
       const essayData: Record<string, unknown> = {
-        title: title || "Untitled Essay",
+        title: title || t('editor.untitled'),
         content: finalContent,
         isPublic: false,
       };
@@ -235,7 +233,6 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   });
 
   const handleAnalyze = async () => {
-
     const finalContent = templateMode ? buildContentFromTemplate : content;
     if (!title.trim() || !finalContent.trim()) {
       toast({
@@ -250,8 +247,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
     try {
       let currentEssayId = essayId;
-        const essayData: Record<string, unknown> = {
-        title: title || "Untitled Essay",
+      const essayData: Record<string, unknown> = {
+        title: title || t('editor.untitled'),
         content: finalContent,
         isPublic: false,
       };
@@ -275,12 +272,12 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     }
   };
 
-    const handleSubmitToTopic = async () => {
+  const handleSubmitToTopic = async () => {
     const finalContent = templateMode ? buildContentFromTemplate : content;
     if (!title.trim() || !finalContent.trim()) {
       toast({
-        title: "Content required",
-        description: "Please add a title and content before submitting.",
+        title: t('editor.toast.content_req_title'),
+        description: t('editor.toast.submit_req_desc'), 
         variant: "destructive",
       });
       return;
@@ -292,7 +289,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
     try {
       await apiRequest("POST", `/api/topics/${topicId}/submissions`, {
-        title: title || "Untitled Essay",
+        title: title || t('editor.untitled'), 
         content: finalContent,
       });
       
@@ -300,8 +297,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/topics", topicId, "submissions"] });
       
       toast({
-        title: "Essay submitted!",
-        description: "Your essay has been submitted for review.",
+        title: t('editor.toast.submitted_title'),
+        description: t('editor.toast.submitted_desc'),
       });
 
       setTimeout(() => {
@@ -309,8 +306,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
       }, 1000);
     } catch (error) {
       toast({
-        title: "Submission failed",
-        description: "Failed to submit essay. Please try again.",
+        title: t('editor.toast.submit_failed_title'),
+        description: t('editor.toast.submit_failed_desc'),
         variant: "destructive",
       });
     } finally {
@@ -320,7 +317,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
   return (
     <Card className="rounded-xl shadow-sm border border-border overflow-hidden">
-            {topicId && topic && (
+      {topicId && topic && (
         <div className="p-3 bg-primary/5 border-b border-primary/20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button 
@@ -330,10 +327,10 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
               data-testid="button-back-to-topic"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
+              {t('editor.back')}
             </Button>
             <div>
-              <span className="text-sm text-muted-foreground">Writing for topic:</span>
+              <span className="text-sm text-muted-foreground">{t('editor.topic_context')}</span>
               <Badge variant="secondary" className="ml-2">{topic.title}</Badge>
             </div>
           </div>
@@ -342,7 +339,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
             disabled={isSubmittingToTopic || !title.trim() || !(templateMode ? buildContentFromTemplate : content).trim()}
             data-testid="button-submit-to-topic"
           >
-            {isSubmittingToTopic ? "Submitting..." : "Submit to Topic"}
+            {isSubmittingToTopic ? t('editor.submitting') : t('editor.submit_topic')}
           </Button>
         </div>
       )}
@@ -372,7 +369,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
                 data-testid="button-analyze"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
-                {isAnalyzing ? "Analyzing..." : "Analyze"}
+                {isAnalyzing ? t('editor.analyzing') : t('editor.analyze')}
               </Button>
             </>
           )}
@@ -396,7 +393,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
             <div className="flex items-center justify-between mb-4 pb-2 border-b">
               <div className="flex items-center gap-2">
                 <LayoutTemplate className="w-4 h-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium text-green-800 dark:text-green-200">Template Mode</span>
+                <span className="text-sm font-medium text-green-800 dark:text-green-200">{t('editor.template_mode')}</span>
               </div>
               <Button
                 variant="ghost"
@@ -406,7 +403,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
                 data-testid="btn-clear-template"
               >
                 <X className="w-3 h-3 mr-1" />
-                Exit Template
+                {t('editor.exit_template')}
               </Button>
             </div>
             <div className="min-h-[400px] text-base leading-relaxed">
@@ -437,7 +434,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
           </div>
         ) : (
           <Textarea
-            placeholder="Start writing your essay..."
+            placeholder={t('editor.placeholders.content')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[400px] text-base leading-relaxed bg-transparent border-none shadow-none resize-none px-0"
@@ -445,13 +442,14 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
           />
         )}
       </CardContent>
-            {selectedRubric && (
+      
+      {selectedRubric && (
         <div className="px-6 py-3 bg-purple-50 dark:bg-purple-950/30 border-t border-purple-200 dark:border-purple-800">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ListChecks className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                Scoring Rubric: {selectedRubric.name}
+                {t('editor.rubric_label', { name: selectedRubric.name })}
               </span>
             </div>
             <Button
@@ -476,7 +474,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
             ))}
           </div>
           <p className="text-xs text-purple-700 dark:text-purple-300 mt-2">
-            AI and community reviewers will score your essay on these categories.
+            {t('editor.rubric_desc')}
           </p>
         </div>
       )}

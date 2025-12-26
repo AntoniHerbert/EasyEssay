@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,13 @@ interface CommunityWithMembership extends Community {
 }
 
 export function CommunityFeed() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
-  
+   
   const [activeTab, setActiveTab] = useState("essays");
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [selectedTopicView, setSelectedTopicView] = useState<CommunityTopic | null>(null);
@@ -48,7 +50,7 @@ export function CommunityFeed() {
   const [communityFilter, setCommunityFilter] = useState<'all' | 'member'>('all');
   const [transferLeadershipDialogOpen, setTransferLeadershipDialogOpen] = useState(false);
   const [selectedNewLeader, setSelectedNewLeader] = useState<string | null>(null);
-  
+   
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -105,14 +107,14 @@ export function CommunityFeed() {
       setNewTopicDescription("");
       setNewTopicDeadline("");
       toast({
-        title: "Topic created",
-        description: "Your topic has been created for community members to write about!",
+        title: t('community_feed.toast.topic_created'),
+        description: t('community_feed.toast.topic_desc'),
       });
     },
     onError: () => {
       toast({
-        title: "Creation failed",
-        description: "Failed to create topic. Please try again.",
+        title: t('community_feed.toast.topic_failed'),
+        description: t('community_feed.toast.topic_failed_desc'),
         variant: "destructive",
       });
     },
@@ -125,14 +127,14 @@ export function CommunityFeed() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/topics", selectedTopicView?.id, "submissions"] });
       toast({
-        title: "Marked as reviewed",
-        description: "The submission has been marked as reviewed.",
+        title: t('community_feed.toast.reviewed'),
+        description: t('community_feed.toast.reviewed_desc'),
       });
     },
     onError: () => {
       toast({
-        title: "Review failed",
-        description: "Failed to mark as reviewed. Please try again.",
+        title: t('community_feed.toast.review_failed'),
+        description: t('community_feed.toast.review_failed_desc'),
         variant: "destructive",
       });
     },
@@ -147,8 +149,8 @@ export function CommunityFeed() {
     },
     onError: () => {
       toast({
-        title: "Action failed",
-        description: "Failed to update like. Please try again.",
+        title: t('community_feed.toast.action_failed'),
+        description: t('community_feed.toast.like_failed_desc'),
         variant: "destructive",
       });
     },
@@ -166,14 +168,14 @@ export function CommunityFeed() {
       setNewCommunityDescription("");
       setNewCommunityIsPublic(true);
       toast({
-        title: "Community created",
-        description: "Your community has been created successfully!",
+        title: t('community_feed.toast.comm_created'),
+        description: t('community_feed.toast.comm_created_desc'),
       });
     },
     onError: () => {
       toast({
-        title: "Creation failed",
-        description: "Failed to create community. Please try again.",
+        title: t('community_feed.toast.comm_failed'),
+        description: t('community_feed.toast.comm_failed_desc'),
         variant: "destructive",
       });
     },
@@ -190,20 +192,20 @@ export function CommunityFeed() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/pending-requests"] });
       if (data.type === 'request') {
         toast({
-          title: "Request sent",
-          description: "Your request to join has been sent to the leader for approval.",
+          title: t('community_feed.toast.request_sent'),
+          description: t('community_feed.toast.request_sent_desc'),
         });
       } else {
         toast({
-          title: "Joined community",
-          description: "You have joined the community!",
+          title: t('community_feed.toast.joined'),
+          description: t('community_feed.toast.joined_desc'),
         });
       }
     },
     onError: (error: any) => {
-      const message = error?.message || "Failed to join community. Please try again.";
+      const message = error?.message || t('community_feed.toast.join_failed_desc');
       toast({
-        title: "Join failed",
+        title: t('community_feed.toast.join_failed'),
         description: message,
         variant: "destructive",
       });
@@ -219,14 +221,14 @@ export function CommunityFeed() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/communities"] });
       setSelectedCommunity(null);
       toast({
-        title: "Left community",
-        description: "You have left the community.",
+        title: t('community_feed.toast.left'),
+        description: t('community_feed.toast.left_desc'),
       });
     },
     onError: () => {
       toast({
-        title: "Leave failed",
-        description: "Failed to leave community. Please try again.",
+        title: t('community_feed.toast.leave_failed'),
+        description: t('community_feed.toast.leave_failed_desc'),
         variant: "destructive",
       });
     },
@@ -251,10 +253,10 @@ export function CommunityFeed() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "join-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "members"] });
-      toast({ title: "Request approved", description: "The user has been added to the community." });
+      toast({ title: t('community_feed.toast.req_approved'), description: "The user has been added to the community." });
     },
     onError: () => {
-      toast({ title: "Approval failed", description: "Failed to approve request.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to approve request.", variant: "destructive" });
     },
   });
 
@@ -264,10 +266,10 @@ export function CommunityFeed() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "join-requests"] });
-      toast({ title: "Request rejected", description: "The join request has been rejected." });
+      toast({ title: t('community_feed.toast.req_rejected'), description: "The join request has been rejected." });
     },
     onError: () => {
-      toast({ title: "Rejection failed", description: "Failed to reject request.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to reject request.", variant: "destructive" });
     },
   });
 
@@ -277,10 +279,10 @@ export function CommunityFeed() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "members"] });
-      toast({ title: "Member promoted", description: "The member is now a leader." });
+      toast({ title: t('community_feed.toast.promoted'), description: "The member is now a leader." });
     },
     onError: () => {
-      toast({ title: "Promotion failed", description: "Failed to promote member.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to promote member.", variant: "destructive" });
     },
   });
 
@@ -290,10 +292,10 @@ export function CommunityFeed() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "members"] });
-      toast({ title: "Leader demoted", description: "The leader is now a regular member." });
+      toast({ title: t('community_feed.toast.demoted'), description: "The leader is now a regular member." });
     },
     onError: () => {
-      toast({ title: "Demotion failed", description: "Failed to demote leader.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to demote leader.", variant: "destructive" });
     },
   });
 
@@ -306,10 +308,10 @@ export function CommunityFeed() {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/communities"] });
       setSelectedCommunity(null);
-      toast({ title: "Leadership transferred", description: "You have transferred primary leadership to another member." });
+      toast({ title: t('community_feed.toast.transferred'), description: t('community_feed.toast.transferred_desc') });
     },
     onError: () => {
-      toast({ title: "Transfer failed", description: "Failed to transfer leadership.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to transfer leadership.", variant: "destructive" });
     },
   });
 
@@ -327,15 +329,15 @@ export function CommunityFeed() {
     const text = (title + " " + content).toLowerCase();
     
     if (text.includes("technology") || text.includes("ai") || text.includes("computer") || text.includes("digital")) {
-      return { label: "Technology", color: "bg-primary/10 text-primary" };
+      return { key: "technology", color: "bg-primary/10 text-primary" };
     } else if (text.includes("environment") || text.includes("climate") || text.includes("sustainability")) {
-      return { label: "Environment", color: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100" };
+      return { key: "environment", color: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100" };
     } else if (text.includes("literature") || text.includes("story") || text.includes("narrative")) {
-      return { label: "Literature", color: "bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100" };
+      return { key: "literature", color: "bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100" };
     } else if (text.includes("science") || text.includes("research") || text.includes("study")) {
-      return { label: "Science", color: "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100" };
+      return { key: "science", color: "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100" };
     } else {
-      return { label: "General", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100" };
+      return { key: "general", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100" };
     }
   };
 
@@ -375,20 +377,20 @@ export function CommunityFeed() {
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Community Essays</h2>
-            <p className="text-muted-foreground">Discover and learn from essays shared by other writers</p>
+            <h2 className="text-2xl font-bold mb-2">{t('community_feed.essays.title')}</h2>
+            <p className="text-muted-foreground">{t('community_feed.essays.subtitle')}</p>
           </div>
           <div className="mt-4 sm:mt-0 flex items-center space-x-3">
             <Select value={selectedTopic} onValueChange={setSelectedTopic}>
               <SelectTrigger className="w-[150px]" data-testid="select-topic">
-                <SelectValue placeholder="All Topics" />
+                <SelectValue placeholder={t('community_feed.community.filters.all_topics')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Topics</SelectItem>
-                <SelectItem value="technology">Technology</SelectItem>
-                <SelectItem value="science">Science</SelectItem>
-                <SelectItem value="literature">Literature</SelectItem>
-                <SelectItem value="environment">Environment</SelectItem>
+                <SelectItem value="all">{t('community_feed.communities.filters.all_topics')}</SelectItem>
+                <SelectItem value="technology">{t('community_feed.communities.filters.technology')}</SelectItem>
+                <SelectItem value="science">{t('community_feed.communities.filters.science')}</SelectItem>
+                <SelectItem value="literature">{t('community_feed.communities.filters.literature')}</SelectItem>
+                <SelectItem value="environment">{t('community_feed.communities.filters.environment')}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
@@ -408,9 +410,9 @@ export function CommunityFeed() {
           <Card>
             <CardContent className="p-12 text-center">
               <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No community essays yet</h3>
+              <h3 className="text-lg font-medium mb-2">{t('community_feed.essays.no_essays')}</h3>
               <p className="text-muted-foreground">
-                Be the first to share your essay with the community!
+                {t('community_feed.essays.be_first')}
               </p>
             </CardContent>
           </Card>
@@ -450,10 +452,10 @@ export function CommunityFeed() {
                             </Button>
                           </Link>
                           <span className="text-muted-foreground text-sm">
-                            {new Date(essay.updatedAt).toLocaleDateString()}
+                            {new Date(essay.updatedAt).toLocaleDateString(i18n.language)}
                           </span>
                           <span className={`px-2 py-1 text-xs rounded-full ${topic.color}`}>
-                            {topic.label}
+                            {t(`community.topics.${topic.key}`)}
                           </span>
                         </div>
                         
@@ -471,16 +473,16 @@ export function CommunityFeed() {
                         <div className="flex space-x-4 text-sm text-muted-foreground">
                             <div className="flex items-center space-x-1">
                               <Clock className="w-4 h-4" />
-                              <span>{readingTime} min read</span>
+                              <span>{readingTime} {t('community.card.min_read')}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <BookOpen className="w-4 h-4" />
-                              <span>{essay.wordCount} words</span>
+                              <span>{essay.wordCount} {t('community.card.words')}</span>
                             </div>
-                            <div className="flex items-center space-x-2">
+                            {/* <div className="flex items-center space-x-2">
                               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                               <span>{accuracyScore}% accuracy</span>
-                            </div>
+                            </div> */}
                           </div>
                           <div className="flex items-center space-x-3">
                             <Button
@@ -526,7 +528,7 @@ export function CommunityFeed() {
             
             <div className="text-center">
               <Button variant="secondary" size="lg" data-testid="button-load-more">
-                Load More Essays
+                {t('community_feed.essays.load_more')}
               </Button>
             </div>
           </div>
@@ -537,7 +539,7 @@ export function CommunityFeed() {
 
   const renderCommunityDetail = () => {
     if (!selectedCommunity) return null;
-    
+     
     const membership = getUserMembership(selectedCommunity.id);
     const isLeader = membership?.role === 'leader';
     const isMember = !!membership;
@@ -551,7 +553,7 @@ export function CommunityFeed() {
           data-testid="button-back-communities"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Communities
+          {t('community_feed.communities.back_btn')}
         </Button>
 
         <Card className="mb-6">
@@ -563,7 +565,7 @@ export function CommunityFeed() {
                   {isLeader && (
                     <Badge variant="secondary" className="flex items-center gap-1">
                       <Crown className="w-3 h-3" />
-                      Leader
+                      {t('community_feed.detail.leader_badge')}
                     </Badge>
                   )}
                 </div>
@@ -572,7 +574,7 @@ export function CommunityFeed() {
                 </CardDescription>
                 {selectedCommunity.code && (
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-sm text-muted-foreground">Share Code:</span>
+                    <span className="text-sm text-muted-foreground">{t('community_feed.detail.share_code')}</span>
                     <Badge 
                       variant="outline" 
                       className="font-mono text-base cursor-pointer hover:bg-accent"
@@ -581,8 +583,8 @@ export function CommunityFeed() {
                         setCodeCopied(true);
                         setTimeout(() => setCodeCopied(false), 2000);
                         toast({
-                          title: "Code copied!",
-                          description: "Share this code with others to join your community.",
+                          title: t('community_feed.detail.code_copied'),
+                          description: t('community_feed.detail.code_copied_desc'),
                         });
                       }}
                       data-testid="badge-community-code"
@@ -607,14 +609,14 @@ export function CommunityFeed() {
                         data-testid="button-transfer-leadership"
                       >
                         <Crown className="w-4 h-4 mr-1" />
-                        Transfer Leadership
+                        {t('community_feed.detail.transfer_leadership')}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Transfer Primary Leadership</DialogTitle>
+                        <DialogTitle>{t('community_feed.dialogs.transfer.title')}</DialogTitle>
                         <DialogDescription>
-                          Select a member to become the new primary leader. You will become a regular member after transferring.
+                          {t('community_feed.dialogs.transfer.desc')}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -631,7 +633,7 @@ export function CommunityFeed() {
                             <div className="flex-1">
                               <p className="font-medium">{member.username}</p>
                               {member.role === 'leader' && (
-                                <p className="text-xs text-muted-foreground">Current Leader</p>
+                                <p className="text-xs text-muted-foreground">{t('community_feed.detail.leader_badge')}</p>
                               )}
                             </div>
                             {selectedNewLeader === member.userId && (
@@ -642,7 +644,7 @@ export function CommunityFeed() {
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setTransferLeadershipDialogOpen(false)}>
-                          Cancel
+                          {t('community_feed.dialogs.transfer.cancel')}
                         </Button>
                         <Button 
                           onClick={() => {
@@ -655,7 +657,7 @@ export function CommunityFeed() {
                           disabled={!selectedNewLeader || transferLeadershipMutation.isPending}
                           data-testid="button-confirm-transfer"
                         >
-                          Transfer Leadership
+                          {t('community_feed.dialogs.transfer.confirm')}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -670,7 +672,7 @@ export function CommunityFeed() {
                     data-testid="button-leave-community"
                   >
                     <LogOut className="w-4 h-4 mr-1" />
-                    Leave
+                    {t('community_feed.detail.leave')}
                   </Button>
                 )}
               </div>
@@ -678,11 +680,11 @@ export function CommunityFeed() {
             <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
-                <span>{selectedCommunity.memberCount} members</span>
+                <span>{t('community_feed.communities.card.members_count', { count: selectedCommunity.memberCount })}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Crown className="w-4 h-4" />
-                <span>Led by {selectedCommunity.leaderName}</span>
+                <span>{t('community_feed.communities.card.led_by', { name: selectedCommunity.leaderName })}</span>
               </div>
             </div>
           </CardHeader>
@@ -693,12 +695,12 @@ export function CommunityFeed() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <UserCheck className="w-5 h-5" />
-                Pending Join Requests ({joinRequests.filter(r => r.status === 'pending').length})
+                {t('community_feed.detail.pending_requests', { count: joinRequests.filter(r => r.status === 'pending').length })}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {joinRequests.filter(r => r.status === 'pending').length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No pending requests</p>
+                <p className="text-muted-foreground text-center py-4">{t('community_feed.detail.no_pending')}</p>
               ) : (
                 <div className="space-y-3">
                   {joinRequests.filter(r => r.status === 'pending').map((request) => (
@@ -710,7 +712,7 @@ export function CommunityFeed() {
                         <div>
                           <p className="font-medium">{request.username}</p>
                           <p className="text-sm text-muted-foreground">
-                            Requested {new Date(request.createdAt).toLocaleDateString()}
+                            {t('community_feed.detail.requested_on', { date: new Date(request.createdAt).toLocaleDateString(i18n.language) })}
                           </p>
                         </div>
                       </div>
@@ -723,7 +725,7 @@ export function CommunityFeed() {
                           data-testid={`button-approve-${request.id}`}
                         >
                           <UserCheck className="w-4 h-4 mr-1" />
-                          Approve
+                          {t('community_feed.detail.approve')}
                         </Button>
                         <Button
                           size="sm"
@@ -733,7 +735,7 @@ export function CommunityFeed() {
                           data-testid={`button-reject-${request.id}`}
                         >
                           <UserX className="w-4 h-4 mr-1" />
-                          Reject
+                          {t('community_feed.detail.reject')}
                         </Button>
                       </div>
                     </div>
@@ -747,45 +749,45 @@ export function CommunityFeed() {
         {isMember && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Topics</h3>
+              <h3 className="text-lg font-semibold">{t('community_feed.detail.topics_title')}</h3>
               {isLeader && (
               <Dialog open={createTopicDialogOpen} onOpenChange={setCreateTopicDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-create-topic">
                     <Plus className="w-4 h-4 mr-1" />
-                    Create Topic
+                    {t('community_feed.detail.create_topic')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Create a New Topic</DialogTitle>
+                    <DialogTitle>{t('community_feed.dialogs.create_topic.title')}</DialogTitle>
                     <DialogDescription>
-                      Create a topic for your community members to write essays about.
+                      {t('community_feed.dialogs.create_topic.desc')}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="topic-title">Topic Title</Label>
+                      <Label htmlFor="topic-title">{t('community_feed.dialogs.create_topic.title_label')}</Label>
                       <Input
                         id="topic-title"
-                        placeholder="Enter topic title"
+                        placeholder={t('community_feed.dialogs.create_topic.title_placeholder')}
                         value={newTopicTitle}
                         onChange={(e) => setNewTopicTitle(e.target.value)}
                         data-testid="input-topic-title"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="topic-description">Description (optional)</Label>
+                      <Label htmlFor="topic-description">{t('community_feed.dialogs.create_topic.desc_label')}</Label>
                       <Textarea
                         id="topic-description"
-                        placeholder="Describe what you want members to write about"
+                        placeholder={t('community_feed.dialogs.create_topic.desc_placeholder')}
                         value={newTopicDescription}
                         onChange={(e) => setNewTopicDescription(e.target.value)}
                         data-testid="input-topic-description"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="topic-deadline">Deadline (optional)</Label>
+                      <Label htmlFor="topic-deadline">{t('community_feed.dialogs.create_topic.deadline_label')}</Label>
                       <Input
                         id="topic-deadline"
                         type="date"
@@ -801,7 +803,7 @@ export function CommunityFeed() {
                       onClick={() => setCreateTopicDialogOpen(false)}
                       data-testid="button-cancel-topic"
                     >
-                      Cancel
+                      {t('community_feed.dialogs.create_topic.cancel')}
                     </Button>
                     <Button 
                       onClick={() => createTopicMutation.mutate({ 
@@ -812,7 +814,7 @@ export function CommunityFeed() {
                       disabled={!newTopicTitle.trim() || createTopicMutation.isPending}
                       data-testid="button-submit-topic"
                     >
-                      {createTopicMutation.isPending ? "Creating..." : "Create Topic"}
+                      {createTopicMutation.isPending ? t('community_feed.dialogs.create_topic.creating') : t('community_feed.dialogs.create_topic.create')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -865,11 +867,11 @@ export function CommunityFeed() {
                           {topic.deadline && (
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              <span>Due {new Date(topic.deadline).toLocaleDateString()}</span>
+                              <span>{t('community_feed.topic.due_date', { date: new Date(topic.deadline).toLocaleDateString(i18n.language) })}</span>
                             </div>
                           )}
                           <Badge variant={topic.isActive ? "default" : "secondary"} className="text-xs">
-                            {topic.isActive ? "Active" : "Closed"}
+                            {topic.isActive ? t('community_feed.topic.active') : t('community_feed.topic.closed')}
                           </Badge>
                         </div>
                       </div>
@@ -884,13 +886,13 @@ export function CommunityFeed() {
         )}
 
         <div>
-          <h3 className="text-lg font-semibold mb-4">Members ({communityMembers.length})</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('community_feed.detail.members_title', { count: communityMembers.length })}</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {communityMembers.map((member: CommunityMember) => {
               const isPrimaryLeader = selectedCommunity.leaderId === member.userId;
               const canPromote = isLeader && member.role !== 'leader' && member.userId !== user?.id;
               const canDemote = selectedCommunity.leaderId === user?.id && member.role === 'leader' && member.userId !== user?.id;
-              
+               
               return (
                 <Card key={member.id} className="p-3" data-testid={`member-card-${member.id}`}>
                   <div className="flex flex-col gap-2">
@@ -904,7 +906,7 @@ export function CommunityFeed() {
                         {member.role === 'leader' && (
                           <div className="flex items-center gap-1 text-xs text-primary">
                             <Crown className="w-3 h-3" />
-                            <span>{isPrimaryLeader ? "Primary Leader" : "Leader"}</span>
+                            <span>{isPrimaryLeader ? t('community_feed.detail.primary_leader') : t('community_feed.detail.leader_badge')}</span>
                           </div>
                         )}
                       </div>
@@ -921,7 +923,7 @@ export function CommunityFeed() {
                             data-testid={`button-promote-${member.userId}`}
                           >
                             <Crown className="w-3 h-3 mr-1" />
-                            Promote
+                            {t('community_feed.detail.promote')}
                           </Button>
                         )}
                         {canDemote && (
@@ -934,7 +936,7 @@ export function CommunityFeed() {
                             data-testid={`button-demote-${member.userId}`}
                           >
                             <UserX className="w-3 h-3 mr-1" />
-                            Demote
+                            {t('community_feed.detail.demote')}
                           </Button>
                         )}
                       </div>
@@ -951,7 +953,7 @@ export function CommunityFeed() {
 
   const renderTopicDetail = () => {
     if (!selectedTopicView || !selectedCommunity) return null;
-    
+     
     const membership = getUserMembership(selectedCommunity.id);
     const isLeader = membership?.role === 'leader';
     const isMember = !!membership;
@@ -966,7 +968,7 @@ export function CommunityFeed() {
           data-testid="button-back-topics"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Community
+          {t('community_feed.topic.back_btn')}
         </Button>
 
         <Card className="mb-6">
@@ -981,19 +983,19 @@ export function CommunityFeed() {
                 )}
               </div>
               <Badge variant={selectedTopicView.isActive ? "default" : "secondary"}>
-                {selectedTopicView.isActive ? "Active" : "Closed"}
+                {selectedTopicView.isActive ? t('community_feed.topic.active') : t('community_feed.topic.closed')}
               </Badge>
             </div>
             <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
               {selectedTopicView.deadline && (
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  <span>Due {new Date(selectedTopicView.deadline).toLocaleDateString()}</span>
+                  <span>{t('community_feed.topic.due_date', { date: new Date(selectedTopicView.deadline).toLocaleDateString(i18n.language) })}</span>
                 </div>
               )}
               <div className="flex items-center gap-1">
                 <FileText className="w-4 h-4" />
-                <span>{topicSubmissions.length} submissions</span>
+                <span>{t('community_feed.topic.submissions_count', { count: topicSubmissions.length })}</span>
               </div>
             </div>
           </CardHeader>
@@ -1005,7 +1007,7 @@ export function CommunityFeed() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Crown className="w-5 h-5 text-primary" />
-                Leader Dashboard
+                {t('community_feed.topic.leader_dashboard')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1020,7 +1022,7 @@ export function CommunityFeed() {
                 const notSubmittedMembers = participatingMembers.filter(
                   (m: CommunityMember) => !submittedUserIds.has(m.userId)
                 );
-                
+                 
                 if (participantCount === 0) {
                   return (
                     <div className="text-center py-6 text-muted-foreground">
@@ -1029,16 +1031,16 @@ export function CommunityFeed() {
                     </div>
                   );
                 }
-                
+                 
                 const unreviewedSubmissions = (memberSubmissions as SubmissionWithEssay[]).filter(s => !s.isReviewed);
                 const totalUnreviewedWords = unreviewedSubmissions.reduce((sum, s) => sum + (s.essay?.wordCount || 0), 0);
                 const reviewTimeMinutes = Math.ceil(totalUnreviewedWords / 200); // ~200 words per minute reading speed
-                
+                 
                 return (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="bg-muted/50 rounded-lg p-4">
-                        <p className="text-sm text-muted-foreground mb-1">Submission Rate</p>
+                        <p className="text-sm text-muted-foreground mb-1">{t('community_feed.topic.stats.submission_rate')}</p>
                         <div className="flex items-center gap-3">
                           <Progress 
                             value={participantCount > 0 ? (memberSubmissionCount / participantCount) * 100 : 0} 
@@ -1055,7 +1057,7 @@ export function CommunityFeed() {
                         </p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-4">
-                        <p className="text-sm text-muted-foreground mb-1">Average Word Count</p>
+                        <p className="text-sm text-muted-foreground mb-1">{t('community_feed.topic.stats.avg_words')}</p>
                         <p className="text-2xl font-semibold">
                           {memberSubmissionCount > 0 
                             ? Math.round(
@@ -1066,26 +1068,26 @@ export function CommunityFeed() {
                               )
                             : 0}
                         </p>
-                        <p className="text-xs text-muted-foreground">words per essay</p>
+                        <p className="text-xs text-muted-foreground">{t('community_feed.topic.stats.words_per_essay')}</p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-4">
-                        <p className="text-sm text-muted-foreground mb-1">Review Status</p>
+                        <p className="text-sm text-muted-foreground mb-1">{t('community_feed.topic.stats.review_status')}</p>
                         <p className="text-2xl font-semibold">
                           {memberSubmissions.filter((s: TopicSubmission) => s.isReviewed).length}/{memberSubmissionCount}
                         </p>
-                        <p className="text-xs text-muted-foreground">reviewed</p>
+                        <p className="text-xs text-muted-foreground">{t('community_feed.topic.stats.reviewed')}</p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-4">
-                        <p className="text-sm text-muted-foreground mb-1">Time to Review</p>
+                        <p className="text-sm text-muted-foreground mb-1">{t('community_feed.topic.stats.time_review')}</p>
                         <p className="text-2xl font-semibold">
                           {unreviewedSubmissions.length === 0 
-                            ? "Done!" 
+                            ? t('community_feed.topic.stats.done') 
                             : reviewTimeMinutes < 60 
                               ? `${reviewTimeMinutes} min` 
                               : `${Math.floor(reviewTimeMinutes / 60)}h ${reviewTimeMinutes % 60}m`}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {unreviewedSubmissions.length} essays pending
+                          {t('community_feed.topic.stats.pending_essays', { count: unreviewedSubmissions.length })}
                         </p>
                       </div>
                     </div>
@@ -1094,7 +1096,7 @@ export function CommunityFeed() {
                       <div>
                         <h4 className="font-medium mb-3 flex items-center gap-2 text-orange-600 dark:text-orange-400">
                           <Clock className="w-4 h-4" />
-                          Not Yet Submitted ({notSubmittedMembers.length})
+                          {t('community_feed.topic.stats.not_submitted', { count: notSubmittedMembers.length })}
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {notSubmittedMembers.map((member: CommunityMember) => (
@@ -1125,15 +1127,15 @@ export function CommunityFeed() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium">Submit Your Essay</h4>
-                  <p className="text-sm text-muted-foreground">Write an essay for this topic</p>
+                  <h4 className="font-medium">{t('community_feed.topic.submit_panel.title')}</h4>
+                  <p className="text-sm text-muted-foreground">{t('community_feed.topic.submit_panel.desc')}</p>
                 </div>
                 <Button 
                   onClick={() => setLocation(`/?topicId=${selectedTopicView.id}&communityId=${selectedCommunity.id}`)}
                   data-testid="button-submit-essay"
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Write Essay
+                  {t('community_feed.topic.submit_panel.btn')}
                 </Button>
               </div>
             </CardContent>
@@ -1145,7 +1147,7 @@ export function CommunityFeed() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                 <FileText className="w-5 h-5" />
-                <span className="font-medium">You have submitted an essay for this topic</span>
+                <span className="font-medium">{t('community_feed.topic.submit_panel.submitted_msg')}</span>
               </div>
             </CardContent>
           </Card>
@@ -1154,9 +1156,9 @@ export function CommunityFeed() {
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             {isLeader && <Check className="w-5 h-5 text-green-600 dark:text-green-400" />}
-            {isLeader ? "Submitted" : "Submissions"} ({topicSubmissions.length})
+            {isLeader ? t('community_feed.topic.submissions_list.title_leader') : t('community_feed.topic.submissions_list.title')} ({topicSubmissions.length})
           </h3>
-          
+           
           {submissionsLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
@@ -1172,9 +1174,9 @@ export function CommunityFeed() {
             <Card>
               <CardContent className="p-8 text-center">
                 <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <h4 className="font-medium mb-1">No submissions yet</h4>
+                <h4 className="font-medium mb-1">{t('community_feed.topic.submissions_list.no_submissions')}</h4>
                 <p className="text-sm text-muted-foreground">
-                  Be the first to submit an essay for this topic!
+                  {t('community_feed.topic.submissions_list.be_first')}
                 </p>
               </CardContent>
             </Card>
@@ -1193,21 +1195,21 @@ export function CommunityFeed() {
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium">{submission.username}</span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(submission.createdAt).toLocaleDateString()}
+                              {new Date(submission.createdAt).toLocaleDateString(i18n.language)}
                             </span>
                             {submission.isReviewed ? (
                               <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-                                Reviewed
+                                {t('community_feed.topic.submissions_list.reviewed')}
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="text-xs">
-                                Pending Review
+                                {t('community_feed.topic.submissions_list.pending_review')}
                               </Badge>
                             )}
                           </div>
                           <Link href={`/essay/${submission.essayId}`}>
                             <Button variant="link" className="p-0 h-auto text-primary" data-testid={`link-essay-${submission.essayId}`}>
-                              View Essay →
+                              {t('community_feed.topic.submissions_list.view_essay')}
                             </Button>
                           </Link>
                         </div>
@@ -1244,39 +1246,39 @@ export function CommunityFeed() {
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Writing Communities</h2>
-            <p className="text-muted-foreground">Join communities to write essays on shared topics</p>
+            <h2 className="text-2xl font-bold mb-2">{t('community_feed.communities.title')}</h2>
+            <p className="text-muted-foreground">{t('community_feed.communities.subtitle')}</p>
           </div>
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="mt-4 sm:mt-0" data-testid="button-create-community">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Community
+                {t('community_feed.communities.create_btn')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create a New Community</DialogTitle>
+                <DialogTitle>{t('community_feed.dialogs.create_community.title')}</DialogTitle>
                 <DialogDescription>
-                  Create a community where you can post essay topics for members to write about.
+                  {t('community_feed.dialogs.create_community.desc')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="community-name">Community Name</Label>
+                  <Label htmlFor="community-name">{t('community_feed.dialogs.create_community.name_label')}</Label>
                   <Input
                     id="community-name"
-                    placeholder="Enter community name"
+                    placeholder={t('community_feed.dialogs.create_community.name_placeholder')}
                     value={newCommunityName}
                     onChange={(e) => setNewCommunityName(e.target.value)}
                     data-testid="input-community-name"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="community-description">Description (optional)</Label>
+                  <Label htmlFor="community-description">{t('community_feed.dialogs.create_community.desc_label')}</Label>
                   <Textarea
                     id="community-description"
-                    placeholder="Describe what your community is about"
+                    placeholder={t('community_feed.dialogs.create_community.desc_placeholder')}
                     value={newCommunityDescription}
                     onChange={(e) => setNewCommunityDescription(e.target.value)}
                     data-testid="input-community-description"
@@ -1284,9 +1286,9 @@ export function CommunityFeed() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Community Type</Label>
+                    <Label>{t('community_feed.dialogs.create_community.type_label')}</Label>
                     <p className="text-sm text-muted-foreground">
-                      {newCommunityIsPublic ? "Anyone can join" : "Requires approval to join"}
+                      {newCommunityIsPublic ? t('community_feed.dialogs.create_community.public_desc') : t('community_feed.dialogs.create_community.private_desc')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1305,7 +1307,7 @@ export function CommunityFeed() {
                   onClick={() => setCreateDialogOpen(false)}
                   data-testid="button-cancel-create"
                 >
-                  Cancel
+                  {t('community_feed.dialogs.create_community.cancel')}
                 </Button>
                 <Button 
                   onClick={() => createCommunityMutation.mutate({ 
@@ -1316,7 +1318,7 @@ export function CommunityFeed() {
                   disabled={!newCommunityName.trim() || createCommunityMutation.isPending}
                   data-testid="button-submit-create"
                 >
-                  {createCommunityMutation.isPending ? "Creating..." : "Create Community"}
+                  {createCommunityMutation.isPending ? t('community_feed.dialogs.create_community.creating') : t('community_feed.dialogs.create_community.create')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1327,8 +1329,8 @@ export function CommunityFeed() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
           <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
             {[
-              { key: "all", label: "All Communities" },
-              { key: "member", label: "My Communities" },
+              { key: "all", label: t('community_feed.communities.filters.all') },
+              { key: "member", label: t('community_feed.communities.filters.member') },
             ].map((filter) => (
               <Button
                 key={filter.key}
@@ -1345,7 +1347,7 @@ export function CommunityFeed() {
           <div className="relative flex-1 w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search communities..."
+              placeholder={t('community_feed.communities.search_placeholder')}
               value={communitySearch}
               onChange={(e) => setCommunitySearch(e.target.value)}
               className="pl-10"
@@ -1367,13 +1369,13 @@ export function CommunityFeed() {
           <Card>
             <CardContent className="p-12 text-center">
               <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No communities yet</h3>
+              <h3 className="text-lg font-medium mb-2">{t('community_feed.communities.no_communities')}</h3>
               <p className="text-muted-foreground mb-4">
-                Be the first to create a writing community!
+                {t('community_feed.communities.be_first_community')}
               </p>
               <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-first-community">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Community
+                {t('community_feed.communities.create_btn')}
               </Button>
             </CardContent>
           </Card>
@@ -1408,22 +1410,22 @@ export function CommunityFeed() {
                           {community.isPublic ? (
                             <Badge variant="outline" className="flex items-center gap-1">
                               <Globe className="w-3 h-3" />
-                              Public
+                              {t('community_feed.communities.card.public')}
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="flex items-center gap-1">
                               <Lock className="w-3 h-3" />
-                              Private
+                              {t('community_feed.communities.card.private')}
                             </Badge>
                           )}
                           {isLeader && (
                             <Badge variant="secondary" className="flex items-center gap-1">
                               <Crown className="w-3 h-3" />
-                              Leader
+                              {t('community_feed.communities.card.leader')}
                             </Badge>
                           )}
                           {isMember && !isLeader && (
-                            <Badge variant="outline">Member</Badge>
+                            <Badge variant="outline">{t('community_feed.communities.card.member')}</Badge>
                           )}
                         </div>
                         <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
@@ -1432,11 +1434,11 @@ export function CommunityFeed() {
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
-                            <span>{community.memberCount} members</span>
+                            <span>{t('community_feed.communities.card.members_count', { count: community.memberCount })}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Crown className="w-4 h-4" />
-                            <span>{community.leaderName}</span>
+                            <span>{t('community_feed.communities.card.led_by', { name: community.leaderName })}</span>
                           </div>
                         </div>
                       </div>
@@ -1450,7 +1452,7 @@ export function CommunityFeed() {
                               data-testid={`button-pending-${community.id}`}
                             >
                               <Clock className="w-4 h-4 mr-1" />
-                              Pending
+                              {t('community_feed.communities.card.pending')}
                             </Button>
                           ) : (
                             <Button
@@ -1460,7 +1462,7 @@ export function CommunityFeed() {
                               data-testid={`button-join-${community.id}`}
                             >
                               <UserPlus className="w-4 h-4 mr-1" />
-                              {community.isPublic ? "Join" : "Request to Join"}
+                              {community.isPublic ? t('community_feed.communities.card.join') : t('community_feed.communities.card.request_join')}
                             </Button>
                           )
                         )}
@@ -1483,11 +1485,11 @@ export function CommunityFeed() {
         <TabsList className="mb-6">
           <TabsTrigger value="essays" data-testid="tab-essays">
             <BookOpen className="w-4 h-4 mr-2" />
-            Essays
+            {t('community_feed.tabs.essays')}
           </TabsTrigger>
           <TabsTrigger value="communities" data-testid="tab-communities">
             <Users className="w-4 h-4 mr-2" />
-            Communities
+            {t('community_feed.tabs.communities')}
           </TabsTrigger>
         </TabsList>
 
