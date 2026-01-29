@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (essay.isPublic) {
         console.log(`[Auto-Analysis] Starting auto-analysis for public essay: ${essay.id}`);
         try {
-          const aiReview = getMockAIReview(essay.title, essay.content);
+          const aiReview = getMockAIReview(essay.title, essay.content, essay.rubric || undefined);
           console.log(`[Auto-Analysis] Generated mock AI review with ${aiReview.corrections.length} corrections`);
           
           await storage.createPeerReview({
@@ -184,6 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contentScore: aiReview.contentScore,
             researchScore: aiReview.researchScore,
             overallScore: aiReview.overallScore,
+            rubricScores: aiReview.rubricScores || null,
             corrections: aiReview.corrections,
             isSubmitted: true,
           });
@@ -595,6 +596,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(existingReview);
       }
 
+      const hasRubric = essay.rubric && essay.rubric.length > 0;
+      if (hasRubric && req.body.rubricScores) {
+        const rubricNames = new Set(essay.rubric!.map(r => r.name));
+        for (const score of req.body.rubricScores) {
+          if (!rubricNames.has(score.categoryName)) {
+            return res.status(400).json({ 
+              message: `Invalid rubric category: "${score.categoryName}". Must match essay rubric.` 
+            });
+          }
+        }
+      }
+
       const reviewData = insertPeerReviewSchema.parse({
         ...req.body,
         reviewerId,
@@ -634,6 +647,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (existingReview.isSubmitted) {
         return res.status(400).json({ message: "Cannot add corrections to a submitted review" });
+      }
+
+      const essay = await storage.getEssay(existingReview.essayId);
+      if (essay?.rubric && essay.rubric.length > 0) {
+        const rubricNames = new Set(essay.rubric.map(r => r.name));
+        if (!rubricNames.has(req.body.category)) {
+          return res.status(400).json({ 
+            message: `Invalid category: "${req.body.category}". Must match essay rubric.` 
+          });
+        }
       }
 
       const correctionData = correctionSchema.parse(req.body);

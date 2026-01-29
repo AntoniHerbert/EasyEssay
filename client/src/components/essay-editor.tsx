@@ -7,14 +7,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { type Essay, type CommunityTopic, type RubricCategory } from "@shared/schema";
+import { type Essay, type CommunityTopic, type RubricCategory, ESSAY_TYPES, essayTypeLabels, type EssayType } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Save, Wand2, ArrowLeft, X, ListChecks, LayoutTemplate } from "lucide-react";
 import { useLocation, useSearch, Link } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 
+const DEFAULT_RUBRIC: RubricCategory[] = [
+  { id: 'grammar', name: 'Grammar', maxScore: 200, description: 'Spelling, punctuation, syntax' },
+  { id: 'style', name: 'Style', maxScore: 200, description: 'Writing style, tone, word choice' },
+  { id: 'clarity', name: 'Clarity', maxScore: 200, description: 'Sentence structure, transitions' },
+  { id: 'structure', name: 'Structure', maxScore: 200, description: 'Logical flow, paragraph organization' },
+  { id: 'content', name: 'Content', maxScore: 200, description: 'Argument strength, evidence, depth' },
+  { id: 'research', name: 'Research', maxScore: 200, description: 'Sources, citations, support' },
+];
+
 interface SelectedRubric {
   name: string;
   categories: RubricCategory[];
+  essayType?: string | null;
 }
 
 interface EssayEditorProps {
@@ -35,6 +47,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmittingToTopic, setIsSubmittingToTopic] = useState(false);
   const [selectedRubric, setSelectedRubric] = useState<SelectedRubric | null>(null);
+  const [selectedEssayType, setSelectedEssayType] = useState<EssayType | "">("");
   const [templateMode, setTemplateMode] = useState(false);
   const [templateParts, setTemplateParts] = useState<TemplatePart[]>([]);
   const [templateDismissed, setTemplateDismissed] = useState(false);
@@ -65,6 +78,10 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     if (essay && typeof essay === 'object' && 'title' in essay && 'content' in essay) {
       setTitle(essay.title as string);
       setContent(essay.content as string);
+      const savedEssayType = (essay as Essay).essayType;
+      if (savedEssayType && ESSAY_TYPES.includes(savedEssayType as EssayType)) {
+        setSelectedEssayType(savedEssayType as EssayType);
+      }
       onEssayChange?.(essay as Essay);
     }
   }, [essay, onEssayChange]);
@@ -124,6 +141,9 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         try {
           const parsed = JSON.parse(storedRubric) as SelectedRubric;
           setSelectedRubric(parsed);
+          if (parsed.essayType && ESSAY_TYPES.includes(parsed.essayType as EssayType)) {
+            setSelectedEssayType(parsed.essayType as EssayType);
+          }
         } catch {
           localStorage.removeItem("selectedRubric");
         }
@@ -167,16 +187,18 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const saveEssayMutation = useMutation({
     mutationFn: async () => {
       const finalContent = templateMode ? buildContentFromTemplate : content;
+      
+      const rubric = selectedRubric ? selectedRubric.categories : DEFAULT_RUBRIC;
+      const rubricName = selectedRubric ? selectedRubric.name : "Standard";
+      
       const essayData: Record<string, unknown> = {
         title: title || "Untitled Essay",
         content: finalContent,
         isPublic: false,
+        rubric,
+        rubricName,
+        essayType: selectedEssayType || null,
       };
-
-      if (selectedRubric) {
-        essayData.rubric = selectedRubric.categories;
-        essayData.rubricName = selectedRubric.name;
-      }
 
       if (essayId) {
         return apiRequest("PUT", `/api/essays/${essayId}`, essayData);
@@ -244,16 +266,18 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
     try {
       let currentEssayId = essayId;
+      
+      const rubric = selectedRubric ? selectedRubric.categories : DEFAULT_RUBRIC;
+      const rubricName = selectedRubric ? selectedRubric.name : "Standard";
+      
       const essayData: Record<string, unknown> = {
         title: title || "Untitled Essay",
         content: finalContent,
         isPublic: false,
+        rubric,
+        rubricName,
+        essayType: selectedEssayType || null,
       };
-      
-      if (selectedRubric) {
-        essayData.rubric = selectedRubric.categories;
-        essayData.rubricName = selectedRubric.name;
-      }
       
       if (!currentEssayId) {
         const saveResponse = await apiRequest("POST", "/api/essays", essayData);
@@ -342,35 +366,23 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         </div>
       )}
       <div className="p-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-lg font-semibold">Essay Editor</h2>
-          <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-md">
-            {wordCount} words
-          </span>
-        </div>
-        <div className="flex items-center space-x-2">
-          {!topicId && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => saveEssayMutation.mutate()}
-                disabled={saveEssayMutation.isPending}
-                data-testid="button-save"
-              >
-                <Save className="w-4 h-4" />
-              </Button>
-              <Button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || !(templateMode ? buildContentFromTemplate : content).trim()}
-                data-testid="button-analyze"
-              >
-                <Wand2 className="w-4 h-4 mr-2" />
-                {isAnalyzing ? "Analyzing..." : "Analyze"}
-              </Button>
-            </>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold">Essay Editor</h2>
+        <Select 
+          value={selectedEssayType} 
+          onValueChange={(v) => setSelectedEssayType(v as EssayType)}
+          disabled={!!selectedRubric}
+        >
+          <SelectTrigger className="w-[200px]" data-testid="select-essay-type">
+            <SelectValue placeholder="Select essay type" />
+          </SelectTrigger>
+          <SelectContent>
+            {ESSAY_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {essayTypeLabels[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <CardContent className="p-6">
@@ -440,6 +452,35 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         )}
       </CardContent>
       
+      {!topicId && (
+        <div className="px-6 py-3 bg-muted/50 border-t border-border flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            {wordCount} words
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => saveEssayMutation.mutate()}
+              disabled={saveEssayMutation.isPending}
+              data-testid="button-save"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {saveEssayMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || !(templateMode ? buildContentFromTemplate : content).trim()}
+              data-testid="button-analyze"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              {isAnalyzing ? "Analyzing..." : "Analyze"}
+            </Button>
+          </div>
+        </div>
+      )}
+      
       {selectedRubric && (
         <div className="px-6 py-3 bg-purple-50 dark:bg-purple-950/30 border-t border-purple-200 dark:border-purple-800">
           <div className="flex items-center justify-between mb-2">
@@ -447,6 +488,11 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
               <ListChecks className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
                 Scoring Rubric: {selectedRubric.name}
+                {selectedRubric.essayType && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {essayTypeLabels[selectedRubric.essayType as EssayType] || selectedRubric.essayType}
+                  </Badge>
+                )}
               </span>
             </div>
             <Button

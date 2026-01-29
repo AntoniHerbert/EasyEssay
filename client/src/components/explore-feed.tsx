@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { type ExploreItem, type ExploreContentType, type CategoryListPayload, type EssayTopicPayload, type QuotePayload, type TemplatePayload, type CategoryItem } from "@shared/schema";
+import { type ExploreItem, type ExploreContentType, type CategoryListPayload, type EssayTopicPayload, type QuotePayload, type TemplatePayload, type CategoryItem, ESSAY_TYPES, essayTypeLabels, type EssayType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -48,6 +48,7 @@ export function ExploreFeed() {
   const [newQuoteSource, setNewQuoteSource] = useState("");
   const [newTemplateContent, setNewTemplateContent] = useState("");
   const [newCategories, setNewCategories] = useState<CategoryItem[]>([{ name: "", maxScore: 100 }]);
+  const [newEssayType, setNewEssayType] = useState<EssayType | "">("");
 
   const { data: exploreItems = [], isLoading } = useQuery<ExploreItemWithStatus[]>({
     queryKey: ["/api/explore"],
@@ -59,7 +60,7 @@ export function ExploreFeed() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { type: ExploreContentType; title: string; subtitle?: string; payload: any }) => {
+    mutationFn: async (data: { type: ExploreContentType; title: string; subtitle?: string; payload: any; essayType?: string }) => {
       return apiRequest("POST", "/api/explore", data);
     },
     onSuccess: () => {
@@ -112,6 +113,7 @@ export function ExploreFeed() {
     setNewQuoteSource("");
     setNewTemplateContent("");
     setNewCategories([{ name: "", maxScore: 100 }]);
+    setNewEssayType("");
   };
 
   const handleCreate = () => {
@@ -141,6 +143,7 @@ export function ExploreFeed() {
       title: newTitle,
       subtitle: newSubtitle || undefined,
       payload,
+      essayType: newEssayType || undefined,
     });
   };
 
@@ -454,13 +457,21 @@ export function ExploreFeed() {
           
           <div className="py-4">
             {selectedItem.type === 'category_list' && (
-              <div className="space-y-2">
-                {(selectedItem.payload as CategoryListPayload).categories.map((cat, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                    <span className="font-medium">{cat.name}</span>
-                    <span className="text-sm text-muted-foreground">Max: {cat.maxScore} points</span>
+              <div className="space-y-3">
+                {selectedItem.essayType && (
+                  <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <span className="text-sm text-muted-foreground">Essay Type:</span>
+                    <Badge variant="outline">{essayTypeLabels[selectedItem.essayType as EssayType]}</Badge>
                   </div>
-                ))}
+                )}
+                <div className="space-y-2">
+                  {(selectedItem.payload as CategoryListPayload).categories.map((cat, i) => (
+                    <div key={i} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                      <span className="font-medium">{cat.name}</span>
+                      <span className="text-sm text-muted-foreground">Max: {cat.maxScore} points</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             
@@ -500,6 +511,7 @@ export function ExploreFeed() {
                   onClick={() => {
                     const params = new URLSearchParams();
                     params.set("section", "write");
+                    params.set("t", Date.now().toString());
                     
                     if (selectedItem.type === 'essay_topic') {
                       params.set("title", selectedItem.title);
@@ -518,7 +530,8 @@ export function ExploreFeed() {
                       const payload = selectedItem.payload as CategoryListPayload;
                       localStorage.setItem("selectedRubric", JSON.stringify({
                         name: selectedItem.title,
-                        categories: payload.categories
+                        categories: payload.categories,
+                        essayType: selectedItem.essayType || null,
                       }));
                       toast({ 
                         title: "Rubric selected", 
@@ -639,53 +652,70 @@ export function ExploreFeed() {
           )}
           
           {createType === 'category_list' && (
-            <div className="space-y-2">
-              <Label>Categories</Label>
-              {newCategories.map((cat, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input
-                    value={cat.name}
-                    onChange={(e) => {
-                      const updated = [...newCategories];
-                      updated[i].name = e.target.value;
-                      setNewCategories(updated);
-                    }}
-                    placeholder="Category name"
-                    className="flex-1"
-                    data-testid={`input-category-name-${i}`}
-                  />
-                  <Input
-                    type="number"
-                    value={cat.maxScore}
-                    onChange={(e) => {
-                      const updated = [...newCategories];
-                      updated[i].maxScore = parseInt(e.target.value) || 100;
-                      setNewCategories(updated);
-                    }}
-                    placeholder="Max"
-                    className="w-20"
-                    data-testid={`input-category-score-${i}`}
-                  />
-                  {newCategories.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setNewCategories(newCategories.filter((_, j) => j !== i))}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setNewCategories([...newCategories, { name: "", maxScore: 100 }])}
-                data-testid="btn-add-category"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Category
-              </Button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Essay Type</Label>
+                <Select value={newEssayType} onValueChange={(v) => setNewEssayType(v as EssayType)}>
+                  <SelectTrigger data-testid="select-essay-type">
+                    <SelectValue placeholder="Select essay type for this rubric" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ESSAY_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {essayTypeLabels[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Categories</Label>
+                {newCategories.map((cat, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input
+                      value={cat.name}
+                      onChange={(e) => {
+                        const updated = [...newCategories];
+                        updated[i].name = e.target.value;
+                        setNewCategories(updated);
+                      }}
+                      placeholder="Category name"
+                      className="flex-1"
+                      data-testid={`input-category-name-${i}`}
+                    />
+                    <Input
+                      type="number"
+                      value={cat.maxScore}
+                      onChange={(e) => {
+                        const updated = [...newCategories];
+                        updated[i].maxScore = parseInt(e.target.value) || 100;
+                        setNewCategories(updated);
+                      }}
+                      placeholder="Max"
+                      className="w-20"
+                      data-testid={`input-category-score-${i}`}
+                    />
+                    {newCategories.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setNewCategories(newCategories.filter((_, j) => j !== i))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewCategories([...newCategories, { name: "", maxScore: 100 }])}
+                  data-testid="btn-add-category"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Category
+                </Button>
+              </div>
             </div>
           )}
         </div>

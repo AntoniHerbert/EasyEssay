@@ -3,6 +3,30 @@ import { pgTable, text, varchar, boolean, timestamp, jsonb, integer, pgEnum } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const ESSAY_TYPES = [
+  'argumentative',
+  'narrative',
+  'descriptive',
+  'expository',
+  'persuasive',
+  'compare_contrast',
+  'analytical',
+  'reflective',
+] as const;
+
+export type EssayType = typeof ESSAY_TYPES[number];
+
+export const essayTypeLabels: Record<EssayType, string> = {
+  argumentative: 'Argumentative',
+  narrative: 'Narrative',
+  descriptive: 'Descriptive',
+  expository: 'Expository',
+  persuasive: 'Persuasive',
+  compare_contrast: 'Compare & Contrast',
+  analytical: 'Analytical',
+  reflective: 'Reflective',
+};
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username", { length: 50 }).notNull().unique(),
@@ -11,6 +35,7 @@ export const users = pgTable("users", {
 });
 
 export const rubricCategorySchema = z.object({
+  id: z.string().optional(), 
   name: z.string(),
   maxScore: z.number(),
   description: z.string().optional(),
@@ -29,6 +54,7 @@ export const essays = pgTable("essays", {
   isAnalyzed: boolean("is_analyzed").notNull().default(false),
   rubric: jsonb("rubric").$type<RubricCategory[]>(),
   rubricName: text("rubric_name"),
+  essayType: varchar("essay_type", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -180,7 +206,7 @@ export const reviewCategoriesEnum = pgEnum('review_category', [
 ]);
 
 export const correctionSchema = z.object({
-  category: z.enum(['grammar', 'style', 'clarity', 'structure', 'content', 'research']),
+  category: z.string(), 
   selectedText: z.string(),
   textStartIndex: z.number(),
   textEndIndex: z.number(),
@@ -189,11 +215,20 @@ export const correctionSchema = z.object({
 
 export type CorrectionObject = z.infer<typeof correctionSchema>;
 
+export const rubricItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  maxScore: z.number().min(1),
+});
+
+export type RubricItem = z.infer<typeof rubricItemSchema>;
+
 export const rubricScoreSchema = z.object({
-  categoryName: z.string(),
-  score: z.number(),
-  maxScore: z.number(),
-  feedback: z.string().optional(),
+  categoryName: z.string(), 
+  score: z.number().min(0),
+  maxScore: z.number().min(1),
+  comment: z.string().optional(),
 });
 
 export type RubricScore = z.infer<typeof rubricScoreSchema>;
@@ -401,6 +436,7 @@ export const exploreItems = pgTable('explore_items', {
   authorId: varchar('author_id').notNull(),
   authorName: text('author_name').notNull(),
   payload: jsonb('payload').$type<ExplorePayload>().notNull(),
+  essayType: varchar('essay_type', { length: 50 }),
   likesCount: integer('likes_count').notNull().default(0),
   savesCount: integer('saves_count').notNull().default(0),
   isFeatured: boolean('is_featured').notNull().default(false),

@@ -1,4 +1,4 @@
-import { type Essay, type InsertEssay, type UserCorrection, type InsertUserCorrection, type EssayLike, type InsertEssayLike, type Inspiration, type InsertInspiration, type UserProfile, type InsertUserProfile, type Friendship, type InsertFriendship, type UserMessage, type InsertUserMessage, type PeerReview, type InsertPeerReview, type CorrectionObject, type User, type InsertUser, type Community, type InsertCommunity, type CommunityMember, type InsertCommunityMember, type CommunityTopic, type InsertCommunityTopic, type TopicSubmission, type InsertTopicSubmission, type JoinRequest, type InsertJoinRequest, type ExploreItem, type InsertExploreItem, type ExploreLike, type InsertExploreLike, type ExploreSave, type InsertExploreSave, type ExploreContentType, type PeerReviewLike, type InsertPeerReviewLike } from "@shared/schema";
+import { type Essay, type InsertEssay, type UserCorrection, type InsertUserCorrection, type EssayLike, type InsertEssayLike, type Inspiration, type InsertInspiration, type UserProfile, type InsertUserProfile, type Friendship, type InsertFriendship, type UserMessage, type InsertUserMessage, type PeerReview, type InsertPeerReview, type CorrectionObject, type User, type InsertUser, type Community, type InsertCommunity, type CommunityMember, type InsertCommunityMember, type CommunityTopic, type InsertCommunityTopic, type TopicSubmission, type InsertTopicSubmission, type JoinRequest, type InsertJoinRequest, type ExploreItem, type InsertExploreItem, type ExploreLike, type InsertExploreLike, type ExploreSave, type InsertExploreSave, type ExploreContentType, type PeerReviewLike, type InsertPeerReviewLike, type RubricCategory, type RubricScore } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -156,13 +156,18 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const now = new Date();
     const essay: Essay = {
-      ...insertEssay,
       id,
+      title: insertEssay.title,
+      content: insertEssay.content,
+      authorId: insertEssay.authorId,
+      authorName: insertEssay.authorName,
+      wordCount: insertEssay.wordCount ?? 0,
+      isPublic: insertEssay.isPublic ?? false,
+      isAnalyzed: insertEssay.isAnalyzed ?? false,
+      rubric: (insertEssay.rubric as RubricCategory[] | undefined) ?? null,
+      rubricName: insertEssay.rubricName ?? null,
       createdAt: now,
       updatedAt: now,
-      isPublic: insertEssay.isPublic ?? false,
-      wordCount: insertEssay.wordCount ?? 0,
-      isAnalyzed: insertEssay.isAnalyzed ?? false,
     };
     this.essays.set(id, essay);
     return essay;
@@ -175,6 +180,9 @@ export class MemStorage implements IStorage {
     const updatedEssay: Essay = {
       ...essay,
       ...updates,
+      rubric: updates.rubric !== undefined 
+        ? (updates.rubric as RubricCategory[] | undefined) ?? null 
+        : essay.rubric,
       updatedAt: new Date(),
     };
     this.essays.set(id, updatedEssay);
@@ -429,7 +437,8 @@ export class MemStorage implements IStorage {
   async createPeerReview(review: InsertPeerReview): Promise<PeerReview> {
     const newReview: PeerReview = {
       id: randomUUID(),
-      ...review,
+      essayId: review.essayId,
+      reviewerId: review.reviewerId,
       grammarScore: review.grammarScore ?? 100,
       styleScore: review.styleScore ?? 100,
       clarityScore: review.clarityScore ?? 100,
@@ -437,6 +446,7 @@ export class MemStorage implements IStorage {
       contentScore: review.contentScore ?? 100,
       researchScore: review.researchScore ?? 100,
       overallScore: review.overallScore ?? 600,
+      rubricScores: (review.rubricScores as RubricScore[] | undefined) ?? null,
       corrections: (review.corrections ?? []) as CorrectionObject[],
       reviewComment: review.reviewComment ?? null,
       isSubmitted: review.isSubmitted ?? false,
@@ -453,6 +463,9 @@ export class MemStorage implements IStorage {
       const updatedReview: PeerReview = { 
         ...review, 
         ...updates,
+        rubricScores: updates.rubricScores !== undefined 
+          ? (updates.rubricScores as RubricScore[] | undefined) ?? null 
+          : review.rubricScores,
         corrections: (updates.corrections ?? review.corrections) as CorrectionObject[],
         updatedAt: new Date() 
       };
@@ -627,7 +640,9 @@ export class DbStorage implements IStorage {
   constructor() {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     this.db = drizzle(pool, { schema });
-    this.seedInspirations();
+    this.seedInspirations().catch(err => {
+      console.error("Failed to seed inspirations (database may be initializing):", err.message);
+    });
   }
 
   private async seedInspirations() {
@@ -782,14 +797,28 @@ The challenge is not just technological or economic—it's moral. We have a resp
   }
 
   async createEssay(insertEssay: InsertEssay): Promise<Essay> {
-    const result = await this.db.insert(schema.essays).values(insertEssay).returning();
+    const values = {
+      ...insertEssay,
+      rubric: insertEssay.rubric ? (insertEssay.rubric as RubricCategory[]) : null,
+    };
+    const result = await this.db.insert(schema.essays).values(values).returning();
     return result[0];
   }
 
   async updateEssay(id: string, updates: Partial<InsertEssay>): Promise<Essay | undefined> {
+    const setValues = {
+      ...updates,
+      updatedAt: new Date(),
+      rubric: updates.rubric !== undefined 
+        ? (updates.rubric ? (updates.rubric as RubricCategory[]) : null)
+        : undefined,
+    };
+    if (setValues.rubric === undefined) {
+      delete (setValues as any).rubric;
+    }
     const result = await this.db
       .update(schema.essays)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(setValues)
       .where(eq(schema.essays.id, id))
       .returning();
     return result[0];

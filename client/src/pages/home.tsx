@@ -20,6 +20,7 @@ export default function Home() {
   const searchParams = new URLSearchParams(searchString);
   const topicId = searchParams.get("topicId");
   const sectionParam = searchParams.get("section");
+  const navTimestamp = searchParams.get("t");
 
   useEffect(() => {
     if (sectionParam === "community") {
@@ -30,7 +31,7 @@ export default function Home() {
     } else if (topicId) {
       setActiveSection("write");
     }
-  }, [topicId, sectionParam]);
+  }, [topicId, sectionParam, navTimestamp]);
 
   useEffect(() => {
     const navigateToMessages = localStorage.getItem('navigateToMessages');
