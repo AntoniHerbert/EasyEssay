@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { type ExploreItem, type ExploreContentType, type CategoryListPayload, type EssayTopicPayload, type QuotePayload, type TemplatePayload, type CategoryItem } from "@shared/schema";
+import { type ExploreItem, type ExploreContentType, type CategoryListPayload, type EssayTopicPayload, type QuotePayload, type TemplatePayload, type CategoryItem, ESSAY_TYPES, essayTypeLabels, type EssayType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -23,15 +22,14 @@ interface ExploreItemWithStatus extends ExploreItem {
 
 type FilterType = 'all' | 'my_content' | 'saved' | ExploreContentType;
 
-const CONTENT_TYPE_CONFIG: Record<ExploreContentType, { icon: typeof ListChecks; color: string }> = {
-  category_list: { icon: ListChecks, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  essay_topic: { icon: FileText, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  quote: { icon: Quote, color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
-  template: { icon: LayoutTemplate, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+const CONTENT_TYPE_CONFIG: Record<ExploreContentType, { label: string; icon: typeof ListChecks; color: string }> = {
+  category_list: { label: "Categories", icon: ListChecks, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  essay_topic: { label: "Topics", icon: FileText, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  quote: { label: "Quotes", icon: Quote, color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+  template: { label: "Templates", icon: LayoutTemplate, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
 };
 
 export function ExploreFeed() {
-  const { t } = useTranslation(); // <--- Hook
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -50,6 +48,7 @@ export function ExploreFeed() {
   const [newQuoteSource, setNewQuoteSource] = useState("");
   const [newTemplateContent, setNewTemplateContent] = useState("");
   const [newCategories, setNewCategories] = useState<CategoryItem[]>([{ name: "", maxScore: 100 }]);
+  const [newEssayType, setNewEssayType] = useState<EssayType | "">("");
 
   const { data: exploreItems = [], isLoading } = useQuery<ExploreItemWithStatus[]>({
     queryKey: ["/api/explore"],
@@ -61,17 +60,17 @@ export function ExploreFeed() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { type: ExploreContentType; title: string; subtitle?: string; payload: any }) => {
+    mutationFn: async (data: { type: ExploreContentType; title: string; subtitle?: string; payload: any; essayType?: string }) => {
       return apiRequest("POST", "/api/explore", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/explore"] });
       setCreateDialogOpen(false);
       resetForm();
-      toast({ title: t('explore.toast.created'), description: t('explore.toast.created_desc') });
+      toast({ title: "Created!", description: "Your content has been added to Explore." });
     },
     onError: () => {
-      toast({ title: t('explore.toast.create_failed'), description: t('explore.toast.create_failed_desc'), variant: "destructive" });
+      toast({ title: "Failed", description: "Could not create content.", variant: "destructive" });
     },
   });
 
@@ -102,7 +101,7 @@ export function ExploreFeed() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/explore"] });
       setSelectedItem(null);
-      toast({ title: t('explore.toast.deleted'), description: t('explore.toast.deleted_desc') });
+      toast({ title: "Deleted", description: "Content removed." });
     },
   });
 
@@ -114,6 +113,7 @@ export function ExploreFeed() {
     setNewQuoteSource("");
     setNewTemplateContent("");
     setNewCategories([{ name: "", maxScore: 100 }]);
+    setNewEssayType("");
   };
 
   const handleCreate = () => {
@@ -143,6 +143,7 @@ export function ExploreFeed() {
       title: newTitle,
       subtitle: newSubtitle || undefined,
       payload,
+      essayType: newEssayType || undefined,
     });
   };
 
@@ -183,9 +184,9 @@ export function ExploreFeed() {
           <div className="flex items-start justify-between mb-3">
             <Badge className={CONTENT_TYPE_CONFIG.category_list.color}>
               <ListChecks className="w-3 h-3 mr-1" />
-              {t('explore.types.category_list')}
+              Categories
             </Badge>
-            {item.isFeatured && <Badge variant="secondary">{t('explore.card.featured')}</Badge>}
+            {item.isFeatured && <Badge variant="secondary">Featured</Badge>}
           </div>
           <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
           {item.subtitle && <p className="text-sm text-muted-foreground mb-3">{item.subtitle}</p>}
@@ -194,11 +195,11 @@ export function ExploreFeed() {
               <span key={i} className="text-xs bg-muted px-2 py-1 rounded">{cat.name}</span>
             ))}
             {payload.categories.length > 4 && (
-              <span className="text-xs text-muted-foreground">{t('explore.card.more', { count: payload.categories.length - 4 })}</span>
+              <span className="text-xs text-muted-foreground">+{payload.categories.length - 4} more</span>
             )}
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{t('explore.card.total_points', { score: totalScore })}</span>
+            <span>Total: {totalScore} points</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -240,7 +241,7 @@ export function ExploreFeed() {
           <div className="flex items-start justify-between mb-3">
             <Badge className={CONTENT_TYPE_CONFIG.essay_topic.color}>
               <FileText className="w-3 h-3 mr-1" />
-              {t('explore.types.essay_topic')}
+              Topic
             </Badge>
           </div>
           <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
@@ -292,7 +293,7 @@ export function ExploreFeed() {
           <div className="flex items-start justify-between mb-3">
             <Badge className={CONTENT_TYPE_CONFIG.quote.color}>
               <Quote className="w-3 h-3 mr-1" />
-              {t('explore.types.quote')}
+              Quote
             </Badge>
           </div>
           <blockquote className="text-lg italic mb-3 border-l-4 border-primary/30 pl-4">
@@ -309,12 +310,12 @@ export function ExploreFeed() {
               className="h-8"
               onClick={() => {
                 navigator.clipboard.writeText(`"${item.title}" — ${payload.author}`);
-                toast({ title: t('explore.toast.copied'), description: t('explore.toast.copied_desc') });
+                toast({ title: "Copied!", description: "Quote copied to clipboard." });
               }}
               data-testid={`btn-copy-${item.id}`}
             >
               <Copy className="w-4 h-4 mr-1" />
-              {t('explore.card.copy')}
+              Copy Quote
             </Button>
             <div className="flex items-center gap-2">
               <Button
@@ -372,11 +373,11 @@ export function ExploreFeed() {
           <div className="flex items-start justify-between mb-3">
             <Badge className={CONTENT_TYPE_CONFIG.template.color}>
               <LayoutTemplate className="w-3 h-3 mr-1" />
-              {t('explore.types.template')}
+              Template
             </Badge>
             <div className="flex items-center gap-2">
-              {item.isFeatured && <Badge variant="secondary">{t('explore.card.featured')}</Badge>}
-              <span className="text-xs bg-muted px-2 py-1 rounded">{t('explore.card.blanks', { count: gapCount })}</span>
+              {item.isFeatured && <Badge variant="secondary">Featured</Badge>}
+              <span className="text-xs bg-muted px-2 py-1 rounded">{gapCount} blanks</span>
             </div>
           </div>
           <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
@@ -444,9 +445,9 @@ export function ExploreFeed() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Badge className={CONTENT_TYPE_CONFIG[selectedItem.type].color}>
-                {t(`explore.types.${selectedItem.type}`)}
+                {CONTENT_TYPE_CONFIG[selectedItem.type].label}
               </Badge>
-              {selectedItem.isFeatured && <Badge variant="secondary">{t('explore.card.featured')}</Badge>}
+              {selectedItem.isFeatured && <Badge variant="secondary">Featured</Badge>}
             </div>
             <DialogTitle className="text-xl">{selectedItem.title}</DialogTitle>
             {selectedItem.subtitle && (
@@ -456,19 +457,27 @@ export function ExploreFeed() {
           
           <div className="py-4">
             {selectedItem.type === 'category_list' && (
-              <div className="space-y-2">
-                {(selectedItem.payload as CategoryListPayload).categories.map((cat, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                    <span className="font-medium">{cat.name}</span>
-                    <span className="text-sm text-muted-foreground">{t('explore.detail.max_score', { score: cat.maxScore })}</span>
+              <div className="space-y-3">
+                {selectedItem.essayType && (
+                  <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <span className="text-sm text-muted-foreground">Essay Type:</span>
+                    <Badge variant="outline">{essayTypeLabels[selectedItem.essayType as EssayType]}</Badge>
                   </div>
-                ))}
+                )}
+                <div className="space-y-2">
+                  {(selectedItem.payload as CategoryListPayload).categories.map((cat, i) => (
+                    <div key={i} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                      <span className="font-medium">{cat.name}</span>
+                      <span className="text-sm text-muted-foreground">Max: {cat.maxScore} points</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             
             {selectedItem.type === 'essay_topic' && (
               <p className="text-muted-foreground">
-                {(selectedItem.payload as EssayTopicPayload).description || t('explore.detail.no_desc')}
+                {(selectedItem.payload as EssayTopicPayload).description || "No description provided."}
               </p>
             )}
             
@@ -491,7 +500,7 @@ export function ExploreFeed() {
                   data-testid="btn-delete-item"
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
-                  {t('explore.detail.delete')}
+                  Delete
                 </Button>
               )}
             </div>
@@ -502,6 +511,7 @@ export function ExploreFeed() {
                   onClick={() => {
                     const params = new URLSearchParams();
                     params.set("section", "write");
+                    params.set("t", Date.now().toString());
                     
                     if (selectedItem.type === 'essay_topic') {
                       params.set("title", selectedItem.title);
@@ -510,21 +520,22 @@ export function ExploreFeed() {
                         params.set("prompt", payload.description);
                       }
                       localStorage.removeItem("selectedRubric");
-                      toast({ title: t('explore.toast.topic_loaded'), description: t('explore.toast.topic_loaded_desc') });
+                      toast({ title: "Topic loaded", description: "Start writing your essay on this topic!" });
                     } else if (selectedItem.type === 'template') {
                       const payload = selectedItem.payload as TemplatePayload;
                       params.set("content", payload.templateContent);
                       localStorage.removeItem("selectedRubric");
-                      toast({ title: t('explore.toast.template_loaded'), description: t('explore.toast.template_loaded_desc') });
+                      toast({ title: "Template loaded", description: "Fill in the template to write your essay!" });
                     } else if (selectedItem.type === 'category_list') {
                       const payload = selectedItem.payload as CategoryListPayload;
                       localStorage.setItem("selectedRubric", JSON.stringify({
                         name: selectedItem.title,
-                        categories: payload.categories
+                        categories: payload.categories,
+                        essayType: selectedItem.essayType || null,
                       }));
                       toast({ 
-                        title: t('explore.toast.rubric_selected'), 
-                        description: t('explore.toast.rubric_desc', { categories: payload.categories.map(c => c.name).join(", ") })
+                        title: "Rubric selected", 
+                        description: `Your essay will be scored on: ${payload.categories.map(c => c.name).join(", ")}` 
                       });
                     }
                     
@@ -533,7 +544,7 @@ export function ExploreFeed() {
                   }}
                 >
                   <ChevronRight className="w-4 h-4 mr-1" />
-                  {t('explore.detail.use_this')}
+                  Use This
                 </Button>
               )}
             </div>
@@ -547,43 +558,43 @@ export function ExploreFeed() {
     <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t('explore.create.title')}</DialogTitle>
-          <DialogDescription>{t('explore.create.desc')}</DialogDescription>
+          <DialogTitle>Create New Content</DialogTitle>
+          <DialogDescription>Add content for others to discover and use.</DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>{t('explore.create.labels.type')}</Label>
+            <Label>Content Type</Label>
             <Select value={createType} onValueChange={(v) => setCreateType(v as ExploreContentType)}>
               <SelectTrigger data-testid="select-create-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="essay_topic">{t('explore.types.essay_topic')}</SelectItem>
-                <SelectItem value="quote">{t('explore.types.quote')}</SelectItem>
-                <SelectItem value="template">{t('explore.types.template')}</SelectItem>
-                <SelectItem value="category_list">{t('explore.types.category_list')}</SelectItem>
+                <SelectItem value="essay_topic">Essay Topic</SelectItem>
+                <SelectItem value="quote">Quote</SelectItem>
+                <SelectItem value="template">Template</SelectItem>
+                <SelectItem value="category_list">Category List</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <div className="space-y-2">
-            <Label>{createType === 'quote' ? t('explore.create.labels.quote_text') : t('explore.create.labels.title')}</Label>
+            <Label>{createType === 'quote' ? 'Quote Text' : 'Title'}</Label>
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={createType === 'quote' ? t('explore.create.placeholders.quote') : t('explore.create.placeholders.title')}
+              placeholder={createType === 'quote' ? 'Enter the quote...' : 'Enter a title...'}
               data-testid="input-create-title"
             />
           </div>
           
           {createType !== 'quote' && (
             <div className="space-y-2">
-              <Label>{t('explore.create.labels.subtitle')}</Label>
+              <Label>Subtitle (optional)</Label>
               <Input
                 value={newSubtitle}
                 onChange={(e) => setNewSubtitle(e.target.value)}
-                placeholder={t('explore.create.placeholders.subtitle')}
+                placeholder="Brief description..."
                 data-testid="input-create-subtitle"
               />
             </div>
@@ -591,11 +602,11 @@ export function ExploreFeed() {
           
           {createType === 'essay_topic' && (
             <div className="space-y-2">
-              <Label>{t('explore.create.labels.desc')}</Label>
+              <Label>Description</Label>
               <Textarea
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                placeholder={t('explore.create.placeholders.desc')}
+                placeholder="Describe the topic in detail..."
                 data-testid="input-create-description"
               />
             </div>
@@ -604,20 +615,20 @@ export function ExploreFeed() {
           {createType === 'quote' && (
             <>
               <div className="space-y-2">
-                <Label>{t('explore.create.labels.author')}</Label>
+                <Label>Author</Label>
                 <Input
                   value={newQuoteAuthor}
                   onChange={(e) => setNewQuoteAuthor(e.target.value)}
-                  placeholder={t('explore.create.placeholders.author')}
+                  placeholder="Who said this?"
                   data-testid="input-quote-author"
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t('explore.create.labels.source')}</Label>
+                <Label>Source (optional)</Label>
                 <Input
                   value={newQuoteSource}
                   onChange={(e) => setNewQuoteSource(e.target.value)}
-                  placeholder={t('explore.create.placeholders.source')}
+                  placeholder="Book, speech, interview..."
                   data-testid="input-quote-source"
                 />
               </div>
@@ -626,80 +637,97 @@ export function ExploreFeed() {
           
           {createType === 'template' && (
             <div className="space-y-2">
-              <Label>{t('explore.create.labels.template')}</Label>
+              <Label>Template Content</Label>
               <Textarea
                 value={newTemplateContent}
                 onChange={(e) => setNewTemplateContent(e.target.value)}
-                placeholder={t('explore.create.placeholders.template')}
+                placeholder="Write your template. Use [PLACEHOLDER] for gaps users will fill in."
                 className="min-h-[200px] font-mono text-sm"
                 data-testid="input-template-content"
               />
               <p className="text-xs text-muted-foreground">
-                {t('explore.create.hint')}
+                Tip: Use [BRACKETS] to mark areas users should fill in.
               </p>
             </div>
           )}
           
           {createType === 'category_list' && (
-            <div className="space-y-2">
-              <Label>{t('explore.create.labels.categories')}</Label>
-              {newCategories.map((cat, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input
-                    value={cat.name}
-                    onChange={(e) => {
-                      const updated = [...newCategories];
-                      updated[i].name = e.target.value;
-                      setNewCategories(updated);
-                    }}
-                    placeholder={t('explore.create.placeholders.category_name')}
-                    className="flex-1"
-                    data-testid={`input-category-name-${i}`}
-                  />
-                  <Input
-                    type="number"
-                    value={cat.maxScore}
-                    onChange={(e) => {
-                      const updated = [...newCategories];
-                      updated[i].maxScore = parseInt(e.target.value) || 100;
-                      setNewCategories(updated);
-                    }}
-                    placeholder={t('explore.create.placeholders.score')}
-                    className="w-20"
-                    data-testid={`input-category-score-${i}`}
-                  />
-                  {newCategories.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setNewCategories(newCategories.filter((_, j) => j !== i))}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setNewCategories([...newCategories, { name: "", maxScore: 100 }])}
-                data-testid="btn-add-category"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                {t('explore.create.add_category')}
-              </Button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Essay Type</Label>
+                <Select value={newEssayType} onValueChange={(v) => setNewEssayType(v as EssayType)}>
+                  <SelectTrigger data-testid="select-essay-type">
+                    <SelectValue placeholder="Select essay type for this rubric" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ESSAY_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {essayTypeLabels[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Categories</Label>
+                {newCategories.map((cat, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input
+                      value={cat.name}
+                      onChange={(e) => {
+                        const updated = [...newCategories];
+                        updated[i].name = e.target.value;
+                        setNewCategories(updated);
+                      }}
+                      placeholder="Category name"
+                      className="flex-1"
+                      data-testid={`input-category-name-${i}`}
+                    />
+                    <Input
+                      type="number"
+                      value={cat.maxScore}
+                      onChange={(e) => {
+                        const updated = [...newCategories];
+                        updated[i].maxScore = parseInt(e.target.value) || 100;
+                        setNewCategories(updated);
+                      }}
+                      placeholder="Max"
+                      className="w-20"
+                      data-testid={`input-category-score-${i}`}
+                    />
+                    {newCategories.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setNewCategories(newCategories.filter((_, j) => j !== i))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewCategories([...newCategories, { name: "", maxScore: 100 }])}
+                  data-testid="btn-add-category"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Category
+                </Button>
+              </div>
             </div>
           )}
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>{t('explore.create.cancel')}</Button>
+          <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
           <Button
             onClick={handleCreate}
             disabled={!newTitle.trim() || createItemMutation.isPending}
             data-testid="btn-submit-create"
           >
-            {createItemMutation.isPending ? t('explore.create.submitting') : t('explore.create.submit')}
+            {createItemMutation.isPending ? "Creating..." : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -730,12 +758,12 @@ export function ExploreFeed() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold mb-2">{t('explore.header.title')}</h2>
-          <p className="text-muted-foreground">{t('explore.header.subtitle')}</p>
+          <h2 className="text-2xl font-bold mb-2">Explore</h2>
+          <p className="text-muted-foreground">Discover writing resources, topics, and templates</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} className="mt-4 sm:mt-0" data-testid="btn-create-content">
           <Plus className="w-4 h-4 mr-2" />
-          {t('explore.header.create_btn')}
+          Create
         </Button>
       </div>
 
@@ -743,7 +771,7 @@ export function ExploreFeed() {
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder={t('explore.search_placeholder')}
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -754,13 +782,13 @@ export function ExploreFeed() {
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="flex gap-2 pb-2">
             {[
-              { key: 'all' as FilterType, label: t('explore.filters.all') },
-              { key: 'my_content' as FilterType, label: t('explore.filters.my_content') },
-              { key: 'saved' as FilterType, label: t('explore.filters.saved') },
-              { key: 'category_list' as FilterType, label: t('explore.filters.category_list') },
-              { key: 'essay_topic' as FilterType, label: t('explore.filters.essay_topic') },
-              { key: 'quote' as FilterType, label: t('explore.filters.quote') },
-              { key: 'template' as FilterType, label: t('explore.filters.template') },
+              { key: 'all' as FilterType, label: 'All' },
+              { key: 'my_content' as FilterType, label: 'My Content' },
+              { key: 'saved' as FilterType, label: 'Saved' },
+              { key: 'category_list' as FilterType, label: 'Categories' },
+              { key: 'essay_topic' as FilterType, label: 'Topics' },
+              { key: 'quote' as FilterType, label: 'Quotes' },
+              { key: 'template' as FilterType, label: 'Templates' },
             ].map((filter) => (
               <button
                 key={filter.key}
@@ -783,15 +811,15 @@ export function ExploreFeed() {
         <Card>
           <CardContent className="p-12 text-center">
             <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">{t('explore.empty.title')}</h3>
+            <h3 className="text-lg font-medium mb-2">No content found</h3>
             <p className="text-muted-foreground mb-4">
               {searchQuery || activeFilter !== 'all'
-                ? t('explore.empty.desc_search')
-                : t('explore.empty.desc_default')}
+                ? "Try adjusting your search or filters."
+                : "Be the first to add content!"}
             </p>
             <Button onClick={() => setCreateDialogOpen(true)} data-testid="btn-create-first">
               <Plus className="w-4 h-4 mr-2" />
-              {t('explore.empty.btn_create')}
+              Create Content
             </Button>
           </CardContent>
         </Card>

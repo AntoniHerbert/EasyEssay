@@ -1,21 +1,32 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { type Essay, type CommunityTopic, type RubricCategory } from "@shared/schema";
+import { type Essay, type CommunityTopic, type RubricCategory, ESSAY_TYPES, essayTypeLabels, type EssayType } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Save, Wand2, ArrowLeft, X, ListChecks, LayoutTemplate } from "lucide-react";
-import { useLocation, useSearch } from "wouter";
+import { useLocation, useSearch, Link } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
-import { useTranslation } from "react-i18next"; 
+
+const DEFAULT_RUBRIC: RubricCategory[] = [
+  { id: 'grammar', name: 'Grammar', maxScore: 200, description: 'Spelling, punctuation, syntax' },
+  { id: 'style', name: 'Style', maxScore: 200, description: 'Writing style, tone, word choice' },
+  { id: 'clarity', name: 'Clarity', maxScore: 200, description: 'Sentence structure, transitions' },
+  { id: 'structure', name: 'Structure', maxScore: 200, description: 'Logical flow, paragraph organization' },
+  { id: 'content', name: 'Content', maxScore: 200, description: 'Argument strength, evidence, depth' },
+  { id: 'research', name: 'Research', maxScore: 200, description: 'Sources, citations, support' },
+];
 
 interface SelectedRubric {
   name: string;
   categories: RubricCategory[];
+  essayType?: string | null;
 }
 
 interface EssayEditorProps {
@@ -31,12 +42,12 @@ interface TemplatePart {
 
 export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const { user } = useAuth();
-  const { t } = useTranslation(); 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmittingToTopic, setIsSubmittingToTopic] = useState(false);
   const [selectedRubric, setSelectedRubric] = useState<SelectedRubric | null>(null);
+  const [selectedEssayType, setSelectedEssayType] = useState<EssayType | "">("");
   const [templateMode, setTemplateMode] = useState(false);
   const [templateParts, setTemplateParts] = useState<TemplatePart[]>([]);
   const [templateDismissed, setTemplateDismissed] = useState(false);
@@ -67,6 +78,10 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     if (essay && typeof essay === 'object' && 'title' in essay && 'content' in essay) {
       setTitle(essay.title as string);
       setContent(essay.content as string);
+      const savedEssayType = (essay as Essay).essayType;
+      if (savedEssayType && ESSAY_TYPES.includes(savedEssayType as EssayType)) {
+        setSelectedEssayType(savedEssayType as EssayType);
+      }
       onEssayChange?.(essay as Essay);
     }
   }, [essay, onEssayChange]);
@@ -126,6 +141,9 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         try {
           const parsed = JSON.parse(storedRubric) as SelectedRubric;
           setSelectedRubric(parsed);
+          if (parsed.essayType && ESSAY_TYPES.includes(parsed.essayType as EssayType)) {
+            setSelectedEssayType(parsed.essayType as EssayType);
+          }
         } catch {
           localStorage.removeItem("selectedRubric");
         }
@@ -169,16 +187,18 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const saveEssayMutation = useMutation({
     mutationFn: async () => {
       const finalContent = templateMode ? buildContentFromTemplate : content;
+      
+      const rubric = selectedRubric ? selectedRubric.categories : DEFAULT_RUBRIC;
+      const rubricName = selectedRubric ? selectedRubric.name : "Standard";
+      
       const essayData: Record<string, unknown> = {
-        title: title || t('editor.untitled'),
+        title: title || "Untitled Essay",
         content: finalContent,
         isPublic: false,
+        rubric,
+        rubricName,
+        essayType: selectedEssayType || null,
       };
-
-      if (selectedRubric) {
-        essayData.rubric = selectedRubric.categories;
-        essayData.rubricName = selectedRubric.name;
-      }
 
       if (essayId) {
         return apiRequest("PUT", `/api/essays/${essayId}`, essayData);
@@ -191,14 +211,14 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
       onEssayChange?.(savedEssay);
       toast({
-        title: t('editor.toast.saved_title'),
-        description: t('editor.toast.saved_desc'),
+        title: "Essay saved",
+        description: "Your essay has been saved successfully.",
       });
     },
     onError: () => {
       toast({
-        title: t('editor.toast.save_failed_title'),
-        description: t('editor.toast.save_failed_desc'),
+        title: "Save failed",
+        description: "Failed to save essay. Please try again.",
         variant: "destructive",
       });
     },
@@ -211,12 +231,11 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     onSuccess: async (response, variables) => {
       const aiReview = await response.json();
       queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}/peer-reviews`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/essays?authorId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}`] });
       
       toast({
-        title: t('editor.toast.analysis_complete'),
-        description: t('editor.toast.analysis_desc', { count: aiReview.corrections?.length || 0 }),
+        title: "AI Analysis complete",
+        description: `AI review generated with ${aiReview.corrections?.length || 0} suggestions. Redirecting to view...`,
       });
 
       setTimeout(() => {
@@ -225,8 +244,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     },
     onError: (error) => {
       toast({
-        title: t('editor.toast.analysis_failed'),
-        description: error.message || t('editor.toast.analysis_failed_default'),
+        title: "Analysis failed",
+        description: error.message || "Failed to analyze essay. Please try again.",
         variant: "destructive",
       });
     },
@@ -236,8 +255,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     const finalContent = templateMode ? buildContentFromTemplate : content;
     if (!title.trim() || !finalContent.trim()) {
       toast({
-        title: t('editor.toast.content_req_title'),
-        description: t('editor.toast.content_req_desc'),
+        title: "Content required",
+        description: "Please add a title and content before analyzing.",
         variant: "destructive",
       });
       return;
@@ -247,16 +266,19 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
     try {
       let currentEssayId = essayId;
+      
+      const rubric = selectedRubric ? selectedRubric.categories : DEFAULT_RUBRIC;
+      const rubricName = selectedRubric ? selectedRubric.name : "Standard";
+      
       const essayData: Record<string, unknown> = {
-        title: title || t('editor.untitled'),
+        title: title || "Untitled Essay",
         content: finalContent,
         isPublic: false,
+        rubric,
+        rubricName,
+        essayType: selectedEssayType || null,
       };
       
-      if (selectedRubric) {
-        essayData.rubric = selectedRubric.categories;
-        essayData.rubricName = selectedRubric.name;
-      }
       if (!currentEssayId) {
         const saveResponse = await apiRequest("POST", "/api/essays", essayData);
         const savedEssay = await saveResponse.json();
@@ -276,8 +298,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     const finalContent = templateMode ? buildContentFromTemplate : content;
     if (!title.trim() || !finalContent.trim()) {
       toast({
-        title: t('editor.toast.content_req_title'),
-        description: t('editor.toast.submit_req_desc'), 
+        title: "Content required",
+        description: "Please add a title and content before submitting.",
         variant: "destructive",
       });
       return;
@@ -289,7 +311,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
     try {
       await apiRequest("POST", `/api/topics/${topicId}/submissions`, {
-        title: title || t('editor.untitled'), 
+        title: title || "Untitled Essay",
         content: finalContent,
       });
       
@@ -297,8 +319,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/topics", topicId, "submissions"] });
       
       toast({
-        title: t('editor.toast.submitted_title'),
-        description: t('editor.toast.submitted_desc'),
+        title: "Essay submitted!",
+        description: "Your essay has been submitted for review.",
       });
 
       setTimeout(() => {
@@ -306,8 +328,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
       }, 1000);
     } catch (error) {
       toast({
-        title: t('editor.toast.submit_failed_title'),
-        description: t('editor.toast.submit_failed_desc'),
+        title: "Submission failed",
+        description: "Failed to submit essay. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -327,10 +349,10 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
               data-testid="button-back-to-topic"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              {t('editor.back')}
+              Back
             </Button>
             <div>
-              <span className="text-sm text-muted-foreground">{t('editor.topic_context')}</span>
+              <span className="text-sm text-muted-foreground">Writing for topic:</span>
               <Badge variant="secondary" className="ml-2">{topic.title}</Badge>
             </div>
           </div>
@@ -339,48 +361,35 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
             disabled={isSubmittingToTopic || !title.trim() || !(templateMode ? buildContentFromTemplate : content).trim()}
             data-testid="button-submit-to-topic"
           >
-            {isSubmittingToTopic ? t('editor.submitting') : t('editor.submit_topic')}
+            {isSubmittingToTopic ? "Submitting..." : "Submit to Topic"}
           </Button>
         </div>
       )}
       <div className="p-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-lg font-semibold">{t('editor.header')}</h2>
-          <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-md">
-            {t('editor.words', { count: wordCount })}
-          </span>
-        </div>
-        <div className="flex items-center space-x-2">
-
-          {!topicId && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => saveEssayMutation.mutate()}
-                disabled={saveEssayMutation.isPending}
-                data-testid="button-save"
-              >
-                <Save className="w-4 h-4" />
-              </Button>
-              <Button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || !(templateMode ? buildContentFromTemplate : content).trim()}
-                data-testid="button-analyze"
-              >
-                <Wand2 className="w-4 h-4 mr-2" />
-                {isAnalyzing ? t('editor.analyzing') : t('editor.analyze')}
-              </Button>
-            </>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold">Essay Editor</h2>
+        <Select 
+          value={selectedEssayType} 
+          onValueChange={(v) => setSelectedEssayType(v as EssayType)}
+          disabled={!!selectedRubric}
+        >
+          <SelectTrigger className="w-[200px]" data-testid="select-essay-type">
+            <SelectValue placeholder="Select essay type" />
+          </SelectTrigger>
+          <SelectContent>
+            {ESSAY_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {essayTypeLabels[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <CardContent className="p-6">
         <div className="mb-4">
           <Input
             type="text"
-            placeholder={t('editor.placeholders.title')}
+            placeholder="Essay Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="text-xl font-semibold bg-transparent border-none shadow-none text-foreground placeholder-muted-foreground px-0"
@@ -393,7 +402,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
             <div className="flex items-center justify-between mb-4 pb-2 border-b">
               <div className="flex items-center gap-2">
                 <LayoutTemplate className="w-4 h-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium text-green-800 dark:text-green-200">{t('editor.template_mode')}</span>
+                <span className="text-sm font-medium text-green-800 dark:text-green-200">Template Mode</span>
               </div>
               <Button
                 variant="ghost"
@@ -403,7 +412,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
                 data-testid="btn-clear-template"
               >
                 <X className="w-3 h-3 mr-1" />
-                {t('editor.exit_template')}
+                Exit Template
               </Button>
             </div>
             <div className="min-h-[400px] text-base leading-relaxed">
@@ -434,7 +443,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
           </div>
         ) : (
           <Textarea
-            placeholder={t('editor.placeholders.content')}
+            placeholder="Start writing your essay..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[400px] text-base leading-relaxed bg-transparent border-none shadow-none resize-none px-0"
@@ -443,13 +452,47 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         )}
       </CardContent>
       
+      {!topicId && (
+        <div className="px-6 py-3 bg-muted/50 border-t border-border flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            {wordCount} words
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => saveEssayMutation.mutate()}
+              disabled={saveEssayMutation.isPending}
+              data-testid="button-save"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {saveEssayMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || !(templateMode ? buildContentFromTemplate : content).trim()}
+              data-testid="button-analyze"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              {isAnalyzing ? "Analyzing..." : "Analyze"}
+            </Button>
+          </div>
+        </div>
+      )}
+      
       {selectedRubric && (
         <div className="px-6 py-3 bg-purple-50 dark:bg-purple-950/30 border-t border-purple-200 dark:border-purple-800">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ListChecks className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                {t('editor.rubric_label', { name: selectedRubric.name })}
+                Scoring Rubric: {selectedRubric.name}
+                {selectedRubric.essayType && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {essayTypeLabels[selectedRubric.essayType as EssayType] || selectedRubric.essayType}
+                  </Badge>
+                )}
               </span>
             </div>
             <Button
@@ -474,7 +517,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
             ))}
           </div>
           <p className="text-xs text-purple-700 dark:text-purple-300 mt-2">
-            {t('editor.rubric_desc')}
+            AI and community reviewers will score your essay on these categories.
           </p>
         </div>
       )}
