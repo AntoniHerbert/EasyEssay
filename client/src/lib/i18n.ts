@@ -122,7 +122,22 @@ editor: {
     submit_failed_title: "Submission failed",
     submit_failed_desc: "Failed to submit essay. Please try again.",
     submit_req_desc: "Please add a title and content before submitting."
-  }
+  },
+  essay_type_select: "Select essay type",
+  types: {
+    argumentative: "Argumentative",
+    narrative: "Narrative",
+    descriptive: "Descriptive",
+    expository: "Expository",
+    persuasive: "Persuasive",
+    creative: "Creative",
+    analytical: "Analytical",
+    reflective: "Reflective",
+    academic: "Academic",
+    business: "Business",
+    technical: "Technical",
+    other: "Other"
+  },
 },
 explore: {
   header: {
@@ -698,7 +713,22 @@ editor: {
     submit_failed_title: "Falha no envio",
     submit_failed_desc: "Falha ao enviar redação. Tente novamente.",
     submit_req_desc: "Por favor, adicione título e conteúdo antes de enviar."
-  }
+  },
+  essay_type_select: "Selecione o tipo",
+  types: {
+    argumentative: "Argumentativa",
+    narrative: "Narrativa",
+    descriptive: "Descritiva",
+    expository: "Expositiva",
+    persuasive: "Persuasiva",
+    creative: "Criativa",
+    analytical: "Analítica",
+    reflective: "Reflexiva",
+    academic: "Acadêmica",
+    business: "Empresarial",
+    technical: "Técnica",
+    other: "Outro"
+  },
 },
 
   explore: {
