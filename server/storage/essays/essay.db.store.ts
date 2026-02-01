@@ -1,10 +1,9 @@
 import { type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
 import { eq, and, desc, lt, ne, ilike, or } from "drizzle-orm";
-import { type Essay, type InsertEssay } from "@shared/schema";
+import { type Essay, type InsertEssay, type RubricCategory } from "@shared/schema";
 import { IEssayStore } from "./essay.store";
 import { type Tx } from "../types"; 
-import { profile } from "console";
 
 export class EssayDbStore implements IEssayStore {
   private db;
@@ -15,16 +14,16 @@ export class EssayDbStore implements IEssayStore {
 
   async getEssay(id: string): Promise<Essay | undefined> {
     const result = await this.db
-    .select({
-      essay: schema.essays,
-      profileDisplayName: schema.userProfiles.displayName,
-    })
-    .from(schema.essays)
-    .leftJoin(
-      schema.userProfiles,
-      eq(schema.essays.authorId, schema.userProfiles.userId)
-    )
-    .where(eq(schema.essays.id, id));
+      .select({
+        essay: schema.essays,
+        profileDisplayName: schema.userProfiles.displayName,
+      })
+      .from(schema.essays)
+      .leftJoin(
+        schema.userProfiles,
+        eq(schema.essays.authorId, schema.userProfiles.userId)
+      )
+      .where(eq(schema.essays.id, id));
 
     const row = result[0];
     if (!row) return undefined;
@@ -44,14 +43,14 @@ export class EssayDbStore implements IEssayStore {
     searchQuery?: string
   ): Promise<Essay[]> {
     let query = this.db
-    .select({
-      essay: schema.essays,
-      profileDisplayName: schema.userProfiles.displayName,
-    }).from(schema.essays)
-    .leftJoin(
-      schema.userProfiles,
-      eq(schema.essays.authorId, schema.userProfiles.userId)
-    );
+      .select({
+        essay: schema.essays,
+        profileDisplayName: schema.userProfiles.displayName,
+      }).from(schema.essays)
+      .leftJoin(
+        schema.userProfiles,
+        eq(schema.essays.authorId, schema.userProfiles.userId)
+      );
     
     const conditions = [];
     if (isPublic !== undefined) {
@@ -83,8 +82,8 @@ export class EssayDbStore implements IEssayStore {
     }
 
     const rows = await query
-    .limit(limit)
-    .orderBy(desc(schema.essays.createdAt));
+      .limit(limit)
+      .orderBy(desc(schema.essays.createdAt));
     
     return rows.map(({ essay, profileDisplayName }) => ({
       ...essay,
@@ -95,16 +94,33 @@ export class EssayDbStore implements IEssayStore {
   async createEssay(insertEssay: InsertEssay, tx?: Tx): Promise<Essay> {
     const executor = (tx || this.db) as DrizzleDb;
 
-    const result = await executor.insert(schema.essays).values(insertEssay).returning();
+    const values = {
+      ...insertEssay,
+      rubric: insertEssay.rubric ? (insertEssay.rubric as RubricCategory[]) : null,
+    };
+
+    const result = await executor.insert(schema.essays).values(values).returning();
     return result[0];
   }
 
   async updateEssay(id: string, updates: Partial<InsertEssay>, tx?: Tx): Promise<Essay | undefined> {
     const executor = (tx || this.db) as DrizzleDb;
 
+    const setValues = {
+      ...updates,
+      updatedAt: new Date(),
+      rubric: updates.rubric !== undefined 
+        ? (updates.rubric ? (updates.rubric as RubricCategory[]) : null) 
+        : undefined,
+    };
+
+    if (setValues.rubric === undefined) {
+      delete (setValues as any).rubric;
+    }
+
     const result = await executor
       .update(schema.essays)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(setValues)
       .where(eq(schema.essays.id, id))
       .returning();
     return result[0];
@@ -112,7 +128,6 @@ export class EssayDbStore implements IEssayStore {
 
   async deleteEssay(id: string, tx?: Tx): Promise<boolean> {
     const executor = (tx || this.db) as DrizzleDb;
-
     const result = await executor.delete(schema.essays).where(eq(schema.essays.id, id)).returning();
     return result.length > 0;
   }

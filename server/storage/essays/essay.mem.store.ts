@@ -1,4 +1,4 @@
-import { type Essay, type InsertEssay } from "@shared/schema";
+import { type Essay, type InsertEssay, type RubricCategory } from "@shared/schema";
 import { IEssayStore } from "./essay.store";
 import { randomUUID } from "crypto";
 import { type Tx } from "../types";
@@ -14,18 +14,44 @@ export class EssayMemStore implements IEssayStore {
     return this.essays.get(id);
   }
 
-  async getEssays(isPublic?: boolean, authorId?: string, limit = 20, cursor?: Date, searchQuery?: string): Promise<Essay[]> {
-    const allEssays = Array.from(this.essays.values());
-    return allEssays.filter(essay => {
+  async getEssays(
+    isPublic?: boolean, 
+    authorId?: string, 
+    limit = 20, 
+    cursor?: Date, 
+    excludeAuthorId?: string,
+    searchQuery?: string
+  ): Promise<Essay[]> {
+    let allEssays = Array.from(this.essays.values());
+
+    allEssays = allEssays.filter(essay => {
       if (isPublic !== undefined && essay.isPublic !== isPublic) return false;
       if (authorId && essay.authorId !== authorId) return false;
+      if (excludeAuthorId && essay.authorId === excludeAuthorId) return false;
+      
+      if (cursor && essay.createdAt >= cursor) return false; 
+
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesTitle = essay.title.toLowerCase().includes(query);
+        const matchesContent = essay.content.toLowerCase().includes(query);
+        if (!matchesTitle && !matchesContent) return false;
+      }
+
       return true;
-    }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    });
+
+    return allEssays
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   }
 
   async createEssay(insertEssay: InsertEssay, _tx?: Tx): Promise<Essay> {
     const id = randomUUID();
     const now = new Date();
+    
+    const rubric = insertEssay.rubric ? (insertEssay.rubric as RubricCategory[]) : null;
+
     const essay: Essay = {
       ...insertEssay,
       id,
@@ -34,6 +60,8 @@ export class EssayMemStore implements IEssayStore {
       isPublic: insertEssay.isPublic ?? false,
       wordCount: insertEssay.wordCount ?? 0,
       isAnalyzed: insertEssay.isAnalyzed ?? false,
+      rubric: rubric,
+      rubricName: insertEssay.rubricName ?? null,
     };
     this.essays.set(id, essay);
     return essay;
@@ -46,6 +74,9 @@ export class EssayMemStore implements IEssayStore {
     const updatedEssay: Essay = {
       ...essay,
       ...updates,
+      rubric: updates.rubric !== undefined 
+        ? (updates.rubric ? (updates.rubric as RubricCategory[]) : null)
+        : essay.rubric,
       updatedAt: new Date(),
     };
     this.essays.set(id, updatedEssay);

@@ -36,12 +36,13 @@ export interface AIReviewResult {
   offenseReason?: string;
 
   corrections: CorrectionObject[];
+  rubricScores?: any;
 }
 
 /**
  * Analisa uma redação usando GPT-4o com Saídas Estruturadas.
  */
-export async function analyzeEssayWithOpenAI(title: string, content: string): Promise<AIReviewResult> {
+export async function analyzeEssayWithOpenAI(title: string, content: string, rubric?: any): Promise<AIReviewResult> {
 
   const model = process.env.AI_MODEL || "llama-3.3-70b-versatile";
 

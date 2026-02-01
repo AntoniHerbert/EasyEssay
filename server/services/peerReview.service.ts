@@ -2,11 +2,10 @@ import { IEssayStore } from "../storage/essays/essay.store";
 import { IPeerReviewStore } from "../storage/peerReviews/peerReview.store";
 import type { ITransactionManager } from "../storage/transaction";
 import { 
-  insertPeerReviewSchema , 
-  correctionSchema,
   UpdatePeerReviewInput,
   AddCorrectionInput,
-  CreatePeerReviewInput
+  CreatePeerReviewInput,
+  type RubricScore
 } from "@shared/schema";
 
 export class PeerReviewService {
@@ -17,7 +16,7 @@ export class PeerReviewService {
     private txManager: ITransactionManager
   ) {}
 
-  private async updateEssayStats(essayId: string, tx: Tx) {
+  private async updateEssayStats(essayId: string, tx: any) {
     const stats = await this.peerReviewStore.getEssayStats(essayId, tx);
     
     await this.essayStore.updateEssay(essayId, {
@@ -49,9 +48,7 @@ export class PeerReviewService {
   }
 
   /**
-   * Tenta criar uma revisão.
-   * Retorna um objeto indicando o resultado e se foi criada agora ou já existia.
-   * Lança erros para casos de negócio inválidos (404 ou 403).
+   * Cria uma revisão.
    */
   async createReview(essayId: string, reviewerId: string, data: CreatePeerReviewInput) {
     const essay = await this.essayStore.getEssay(essayId);
@@ -68,12 +65,22 @@ export class PeerReviewService {
       return { review: existingReview, isNew: false };
     }
 
+    const hasRubric = essay.rubric && essay.rubric.length > 0;
+    if (hasRubric && data.rubricScores) {
+      const rubricNames = new Set(essay.rubric!.map(r => r.name));
+      for (const score of data.rubricScores as RubricScore[]) {
+        if (!rubricNames.has(score.categoryName)) {
+          throw new Error(`INVALID_RUBRIC_CATEGORY: "${score.categoryName}"`);
+        }
+      }
+    }
+
     const newReview = await this.txManager.transaction(async (tx) => {
-      
       const review = await this.peerReviewStore.createPeerReview({
         ...data,
         reviewerId,
-        essayId
+        essayId,
+        rubricScores: (data.rubricScores as RubricScore[]) || null, 
       }, tx); 
 
       await this.updateEssayStats(essayId, tx); 
@@ -98,18 +105,16 @@ export class PeerReviewService {
       throw new Error("FORBIDDEN_ACCESS");
     }
 
+
     return await this.txManager.transaction(async (tx) => {
+      const updated = await this.peerReviewStore.updatePeerReview(reviewId, data, tx);
 
-    const updated = await this.peerReviewStore.updatePeerReview(reviewId, data, tx);
-
-        const review = await this.peerReviewStore.getPeerReviewById(reviewId); // Leitura rápida
-        if (review) {
-            await this.updateEssayStats(review.essayId, tx);
-        }
-        
-        return updated;
+      if (updated) {
+          await this.updateEssayStats(updated.essayId, tx);
+      }
+      
+      return updated;
     });
-  
   }
 
   /**
@@ -129,12 +134,20 @@ export class PeerReviewService {
     if (existingReview.isSubmitted) {
       throw new Error("REVIEW_ALREADY_SUBMITTED");
     }
+
+    const essay = await this.essayStore.getEssay(existingReview.essayId);
+    if (essay?.rubric && essay.rubric.length > 0) {
+      const rubricNames = new Set(essay.rubric.map(r => r.name));
+      if ('category' in data && data.category && !rubricNames.has(data.category)) {
+         throw new Error(`INVALID_RUBRIC_CATEGORY: "${data.category}"`);
+      }
+    }
     
     return await this.peerReviewStore.addCorrectionToReview(reviewId, data);
   }
 
   /**
-   * Obtém contagem de likes e se o usuário atual deu like.
+   * Obtém status de like.
    */
   async getLikeStatus(reviewId: string, currentUserId?: string) {
     const [likeCount, isLiked] = await Promise.all([
@@ -148,8 +161,7 @@ export class PeerReviewService {
   }
 
   /**
-   * Alterna o like (Se tem, tira. Se não tem, põe).
-   * Retorna o novo estado completo.
+   * Alterna like.
    */
   async toggleLike(reviewId: string, userId: string) {
     const isLiked = await this.peerReviewStore.hasUserLiked(reviewId, userId);

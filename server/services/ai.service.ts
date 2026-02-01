@@ -3,10 +3,11 @@ import type { IPeerReviewStore } from "../storage/peerReviews/peerReview.store";
 import type { ITransactionManager } from "../storage/transaction";
 import { getMockAIReview } from "./mock-analysis";
 import { analyzeEssayWithOpenAI, type AIReviewResult } from "./openai";
+import { type RubricCategory } from "@shared/schema";
 
 export class AiService {
 
-    constructor(
+  constructor(
     private essayStore: IEssayStore,
     private peerReviewStore: IPeerReviewStore,
     private txManager: ITransactionManager,
@@ -14,13 +15,17 @@ export class AiService {
 
   /**
    * Analisa uma única redação.
-   * Pode ser chamado manualmente (pela rota /analyze) ou automaticamente (ao criar essay).
    */
   async analyzeEssay(essayId: string) {
     const essay = await this.essayStore.getEssay(essayId);
     if (!essay) return null;
 
-    await this.runAiAnalysis(essay.id, essay.title, essay.content);
+    await this.runAiAnalysis(
+        essay.id, 
+        essay.title, 
+        essay.content, 
+        essay.rubric || undefined
+    );
     
     return await this.peerReviewStore.getPeerReview(essay.id, "AI");
   }
@@ -29,7 +34,7 @@ export class AiService {
    * Analisa todas as redações públicas pendentes.
    */
   async batchAnalyzeEssays() {
-    const allEssays = await this.essayStore.getEssays(true); // Apenas públicas
+    const allEssays = await this.essayStore.getEssays(true);
     const stats = { success: 0, failed: 0, skipped: 0 };
 
     for (const essay of allEssays) {
@@ -40,7 +45,12 @@ export class AiService {
       }
 
       try {
-        await this.runAiAnalysis(essay.id, essay.title, essay.content);
+        await this.runAiAnalysis(
+            essay.id, 
+            essay.title, 
+            essay.content,
+            essay.rubric || undefined
+        );
         stats.success++;
       } catch (error) {
         console.error(`[AiService] Failed batch analysis for ${essay.id}:`, error);
@@ -51,96 +61,95 @@ export class AiService {
     return { total: allEssays.length, ...stats };
   }
 
-  private async updateEssayStats(essayId: string) {
-    const stats = await this.peerReviewStore.getEssayStats(essayId);
-    await this.essayStore.updateEssay(essayId, {
-      reviewCount: stats.count,
-      averageScore: stats.average
-    });
-  }
-
   /**
    * Lógica central privada de interação com a IA e persistência.
    */
-private async runAiAnalysis(essayId: string, title: string, content: string) {
-
-    const aiReview = await this.fetchReviewData(title, content);
+  private async runAiAnalysis(
+      essayId: string, 
+      title: string, 
+      content: string, 
+      rubric?: RubricCategory[]
+  ) {
+    const aiReview = await this.fetchReviewData(title, content, rubric);
     
     console.log(`[AiService] Analysis result for ${essayId}: Offensive=${aiReview.isOffensive}`);
 
-    if (aiReview.isOffensive) {
-      console.warn(`[AiService] 🚩 FLAGGED OFFENSIVE CONTENT: Essay ${essayId}`);
-      
-      await this.essayStore.updateEssay(essayId, { 
-        isPublic: false, 
-        isAnalyzed: true 
-      });
+    await this.txManager.transaction(async (tx) => {
+        
+        if (aiReview.isOffensive) {
+            console.warn(`[AiService] 🚩 FLAGGED OFFENSIVE CONTENT: Essay ${essayId}`);
+            
+            await this.essayStore.updateEssay(essayId, { 
+                isPublic: false, 
+                isAnalyzed: true 
+            }, tx);
 
-      const warningComment = `⚠️ CONTEÚDO SINALIZADO: Esta redação foi identificada como ofensiva ou imprópria. Ela foi tornada privada automaticamente.\n\nMotivo: ${aiReview.offenseReason || "Violação de diretrizes."}`;
+            const warningComment = `⚠️ CONTEÚDO SINALIZADO: Esta redação foi identificada como ofensiva ou imprópria.\n\nMotivo: ${aiReview.offenseReason || "Violação de diretrizes."}`;
 
-      await this.saveReviewInDatabase(essayId, aiReview, warningComment);
+            await this.saveReviewInDatabase(essayId, aiReview, warningComment, tx);
+            await this.updateEssayStats(essayId, tx);
+            return;
+        }
 
-      await this.updateEssayStats(essayId);
+        await this.saveReviewInDatabase(essayId, aiReview, null, tx);
 
-      return;
-    }
+        const stats = await this.peerReviewStore.getEssayStats(essayId, tx);
 
-
-    await this.essayStore.updateEssay(essayId, { isAnalyzed: true, isPublic: true });
-    
-    await this.saveReviewInDatabase(essayId, aiReview, null);
-
-    const stats = await this.peerReviewStore.getEssayStats(essayId);
-
-    await this.essayStore.updateEssay(essayId, { 
-      isAnalyzed: true,
-      isPublic: true,
-      reviewCount: stats.count,      
-      averageScore: stats.average  
+        await this.essayStore.updateEssay(essayId, { 
+            isAnalyzed: true,
+            isPublic: true,
+            reviewCount: stats.count,      
+            averageScore: stats.average  
+        }, tx);
     });
   }
 
-
-  
+  private async updateEssayStats(essayId: string, tx: any) {
+    const stats = await this.peerReviewStore.getEssayStats(essayId, tx);
+    await this.essayStore.updateEssay(essayId, {
+      reviewCount: stats.count,
+      averageScore: stats.average
+    }, tx);
+  }
 
   /**
-   * Auxiliar: Decide se usa IA Real ou Mock e retorna os dados padronizados.
+   * Auxiliar: Decide se usa IA Real ou Mock.
    */
-  private async fetchReviewData(title: string, content: string): Promise<AIReviewResult> {
+  private async fetchReviewData(title: string, content: string, rubric?: RubricCategory[]): Promise<AIReviewResult> {
     const useRealAi = process.env.NODE_ENV === 'production' || process.env.USE_REAL_AI === 'true';
 
     if (useRealAi) {
       try {
         console.log(`[AiService] Calling OpenAI/Groq...`);
-        return await analyzeEssayWithOpenAI(title, content);
+        return await analyzeEssayWithOpenAI(title, content, rubric);
       } catch (error) {
         console.error("[AiService] AI API failed, falling back to mock:", error);
-        return this.getMockData(title, content);
+        return this.getMockData(title, content, rubric);
       }
     }
 
     console.log(`[AiService] Using Mock AI...`);
-    return this.getMockData(title, content);
+    return this.getMockData(title, content, rubric);
   }
 
-
-
-  /**
-   * Auxiliar: Garante que o Mock tenha a estrutura nova (com campos de moderação)
-   */
-  private getMockData(title: string, content: string): AIReviewResult {
-    const mock = getMockAIReview(title, content);
+  private getMockData(title: string, content: string, rubric?: RubricCategory[]): AIReviewResult {
+    const mock = getMockAIReview(title, content, rubric);
     return {
       ...mock,
-      isOffensive: false, // Mock é sempre seguro
+      isOffensive: false,
       offenseReason: undefined
     };
   }
 
   /**
-   * Auxiliar: Lógica de UPSERT (Criar ou Atualizar) da Review no Banco
+   * Auxiliar: Lógica de UPSERT (Criar ou Atualizar)
    */
-  private async saveReviewInDatabase(essayId: string, aiReview: AIReviewResult, overrideComment: string | null) {
+  private async saveReviewInDatabase(
+      essayId: string, 
+      aiReview: AIReviewResult, 
+      overrideComment: string | null,
+      tx: any
+  ) {
     const reviewData = {
       grammarScore: aiReview.grammarScore,
       styleScore: aiReview.styleScore,
@@ -149,6 +158,9 @@ private async runAiAnalysis(essayId: string, title: string, content: string) {
       contentScore: aiReview.contentScore,
       researchScore: aiReview.researchScore,
       overallScore: aiReview.overallScore,
+      
+      rubricScores: aiReview.rubricScores || null, 
+      
       corrections: aiReview.corrections,
       reviewComment: overrideComment || "Análise automática da IA.", 
       isSubmitted: true
@@ -157,13 +169,13 @@ private async runAiAnalysis(essayId: string, title: string, content: string) {
     const existingReview = await this.peerReviewStore.getPeerReview(essayId, "AI");
 
     if (existingReview) {
-      await this.peerReviewStore.updatePeerReview(existingReview.id, reviewData);
+      await this.peerReviewStore.updatePeerReview(existingReview.id, reviewData, tx);
     } else {
       await this.peerReviewStore.createPeerReview({
         ...reviewData,
         essayId: essayId,
         reviewerId: "AI",
-      });
+      }, tx);
     }
   }
 }

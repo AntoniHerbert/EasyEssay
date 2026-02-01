@@ -11,7 +11,7 @@ interface AIReviewResult {
   corrections: CorrectionObject[];
 }
 
-export function getMockAIReview(title: string, content: string): AIReviewResult {
+export function getMockAIReview(title: string, content: string, rubric?: any): AIReviewResult {
   const corrections: CorrectionObject[] = [];
 
   if (content.indexOf("However") >= 0) {

@@ -1,4 +1,4 @@
-import { type PeerReview, type InsertPeerReview, type CorrectionObject } from "@shared/schema";
+import { type PeerReview, type InsertPeerReview, type CorrectionObject, type PeerReviewWithProfile, type RubricScore } from "@shared/schema";
 import { IPeerReviewStore } from "./peerReview.store";
 import { randomUUID } from "crypto";
 import { type Tx } from "../types"; 
@@ -9,6 +9,13 @@ export class PeerReviewMemStore implements IPeerReviewStore {
 
   constructor() {
     this.peerReviews = new Map();
+  }
+
+  private toWithProfile(review: PeerReview): PeerReviewWithProfile {
+    return {
+      ...review,
+      reviewerName: "Test User (MemStore)", 
+    };
   }
 
   async getEssayStats(essayId: string, _tx?: Tx): Promise<{ count: number; average: number }> {
@@ -22,24 +29,35 @@ export class PeerReviewMemStore implements IPeerReviewStore {
     }
 
     const totalScore = reviews.reduce((sum, review) => sum + review.overallScore, 0);
-
     const average = Math.round(totalScore / count);
 
     return { count, average };
   }
 
-  async getPeerReviews(essayId: string): Promise<PeerReview[]> {
-    return Array.from(this.peerReviews.values()).filter(r => r.essayId === essayId);
+  async getPeerReviews(essayId: string, limit = 10, cursor?: Date): Promise<PeerReviewWithProfile[]> {
+    let reviews = Array.from(this.peerReviews.values())
+      .filter(r => r.essayId === essayId);
+
+    if (cursor) {
+      reviews = reviews.filter(r => r.createdAt < cursor);
+    }
+
+    return reviews
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit)
+      .map(this.toWithProfile);
   }
 
-  async getPeerReview(essayId: string, reviewerId: string): Promise<PeerReview | undefined> {
-    return Array.from(this.peerReviews.values()).find(
+  async getPeerReview(essayId: string, reviewerId: string): Promise<PeerReviewWithProfile | undefined> {
+    const review = Array.from(this.peerReviews.values()).find(
       r => r.essayId === essayId && r.reviewerId === reviewerId
     );
+    return review ? this.toWithProfile(review) : undefined;
   }
 
-  async getPeerReviewById(id: string): Promise<PeerReview | undefined> {
-    return this.peerReviews.get(id);
+  async getPeerReviewById(id: string): Promise<PeerReviewWithProfile | undefined> {
+    const review = this.peerReviews.get(id);
+    return review ? this.toWithProfile(review) : undefined;
   }
 
   async createPeerReview(review: InsertPeerReview, _tx?: Tx): Promise<PeerReview> {
@@ -53,7 +71,10 @@ export class PeerReviewMemStore implements IPeerReviewStore {
       contentScore: review.contentScore ?? 100,
       researchScore: review.researchScore ?? 100,
       overallScore: review.overallScore ?? 600,
+      
+      rubricScores: review.rubricScores ? (review.rubricScores as RubricScore[]) : null,
       corrections: (review.corrections ?? []) as CorrectionObject[],
+      
       reviewComment: review.reviewComment ?? null,
       isSubmitted: review.isSubmitted ?? false,
       createdAt: new Date(),
@@ -69,6 +90,9 @@ export class PeerReviewMemStore implements IPeerReviewStore {
       const updatedReview: PeerReview = { 
         ...review, 
         ...updates,
+        rubricScores: updates.rubricScores !== undefined 
+          ? (updates.rubricScores as RubricScore[] | undefined) ?? null 
+          : review.rubricScores,
         corrections: (updates.corrections ?? review.corrections) as CorrectionObject[],
         updatedAt: new Date() 
       };
@@ -93,11 +117,11 @@ export class PeerReviewMemStore implements IPeerReviewStore {
   }
 
   async deleteByEssayId(essayId: string, _tx?: Tx): Promise<void> {
-  for (const [id, review] of Array.from(this.peerReviews.entries())) {
-    if (review.essayId === essayId) {
-      this.peerReviews.delete(id);
+    for (const [id, review] of Array.from(this.peerReviews.entries())) {
+      if (review.essayId === essayId) {
+        this.peerReviews.delete(id);
+      }
     }
-  }
   }
 
   async getLikeCount(reviewId: string): Promise<number> {
@@ -114,7 +138,6 @@ export class PeerReviewMemStore implements IPeerReviewStore {
     if (!this.reviewLikes.has(reviewId)) {
       this.reviewLikes.set(reviewId, new Set());
     }
-    
     this.reviewLikes.get(reviewId)!.add(userId);
   }
 

@@ -1,12 +1,9 @@
 import { ITransactionManager, type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
-import { eq, and, desc, count, avg, lt } from "drizzle-orm";
-import { type PeerReview, type InsertPeerReview, type CorrectionObject } from "@shared/schema";
+import { eq, and, desc, count, avg, lt, getTableColumns } from "drizzle-orm"; 
+import { type PeerReview, type InsertPeerReview, type CorrectionObject, type RubricScore } from "@shared/schema";
 import { IPeerReviewStore } from "./peerReview.store";
 import { type Tx } from "../types"; 
-
-
-
 
 export class PeerReviewDbStore implements IPeerReviewStore {
   private db;
@@ -39,7 +36,7 @@ export class PeerReviewDbStore implements IPeerReviewStore {
   ): Promise<schema.PeerReviewWithProfile[]> {
     let query = this.db
       .select({
-        review: schema.peerReviews,
+        ...getTableColumns(schema.peerReviews), 
         profileDisplayName: schema.userProfiles.displayName,
       })
       .from(schema.peerReviews)
@@ -59,12 +56,12 @@ export class PeerReviewDbStore implements IPeerReviewStore {
       .limit(limit)
       .orderBy(desc(schema.peerReviews.createdAt));
 
-    return rows.map(({ review, profileDisplayName }) => {
+    return rows.map((row) => {
+      const { profileDisplayName, ...reviewData } = row;
       let reviewerName = profileDisplayName;
 
-      // Tratamento especial para a IA ou usuários deletados
       if (!reviewerName) {
-        if (review.reviewerId === 'AI') {
+        if (reviewData.reviewerId === 'AI') {
           reviewerName = 'AI Assistant';
         } else {
           reviewerName = 'Anonymous';
@@ -72,12 +69,10 @@ export class PeerReviewDbStore implements IPeerReviewStore {
       }
 
       return {
-        ...review,
+        ...reviewData,
         reviewerName,
       };
     });
-
-    
   }
 
   async getPeerReview(essayId: string, reviewerId: string): Promise<schema.PeerReviewWithProfile | undefined> {
@@ -110,16 +105,33 @@ export class PeerReviewDbStore implements IPeerReviewStore {
   async createPeerReview(review: InsertPeerReview, tx?: Tx): Promise<PeerReview> {
     const executor = (tx || this.db) as DrizzleDb;
 
-    const result = await executor.insert(schema.peerReviews).values(review as any).returning();
+    const values = {
+        ...review,
+        rubricScores: review.rubricScores ? (review.rubricScores as RubricScore[]) : null,
+    };
+
+    const result = await executor.insert(schema.peerReviews).values(values as any).returning();
     return result[0];
   }
 
   async updatePeerReview(id: string, updates: Partial<InsertPeerReview>, tx?: Tx): Promise<PeerReview | undefined> {
     const executor = (tx || this.db) as DrizzleDb;
  
+    const setValues = {
+        ...updates,
+        updatedAt: new Date(),
+        rubricScores: updates.rubricScores !== undefined 
+          ? (updates.rubricScores as RubricScore[] | undefined) ?? null 
+          : undefined,
+    };
+
+    if (setValues.rubricScores === undefined) {
+        delete (setValues as any).rubricScores;
+    }
+
     const result = await executor
       .update(schema.peerReviews)
-      .set({ ...updates, updatedAt: new Date() } as any)
+      .set(setValues as any)
       .where(eq(schema.peerReviews.id, id))
       .returning();
     return result[0];
