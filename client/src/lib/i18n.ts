@@ -461,8 +461,7 @@ essay_detail: {
     selected_review: "Selected Review Score",
     current_score: "Your Current Score",
     average: "Average Score ({{count}} reviews)",
-    overall: "Overall Score",
-    custom_missing: "Custom rubric scores not available"
+    overall: "Overall Score"
   },
   content: {
     title: "Essay Content",
@@ -497,8 +496,7 @@ essay_detail: {
   },
   community_reviews: {
     title: "Community Reviews",
-    load_older: "Load More Reviews",
-    loading_more: "Loading more..."
+    load_older: "Load older reviews"
   },
   categories: {
     grammar: { label: "Grammar & Mechanics", desc: "Spelling, punctuation, syntax" },
@@ -521,9 +519,7 @@ essay_detail: {
     submitted: "Review submitted",
     submitted_desc: "Your peer review has been saved successfully.",
     submitted_locked: "Your peer review has been locked and submitted successfully.",
-    submit_failed: "Failed to submit review",
-    like_review_failed: "Failed to like review",
-    like_review_failed_desc: "Please try again."
+    submit_failed: "Failed to submit review"
   }
 },
 user_profile: {
@@ -1066,8 +1062,7 @@ essay_detail: {
     selected_review: "Nota da Avaliação Selecionada",
     current_score: "Sua Nota Atual",
     average: "Média ({{count}} avaliações)",
-    overall: "Nota Geral",
-    custom_missing: "Notas da rubrica não disponíveis"
+    overall: "Nota Geral"
   },
   content: {
     title: "Conteúdo da Redação",
@@ -1102,8 +1097,7 @@ essay_detail: {
   },
   community_reviews: {
     title: "Avaliações da Comunidade",
-    load_older: "Carregar Mais Avaliações",
-    loading_more: "Carregando mais..."
+    load_older: "Carregar avaliações antigas"
   },
   categories: {
     grammar: { label: "Gramática & Mecânica", desc: "Ortografia, pontuação, sintaxe" },
@@ -1126,9 +1120,7 @@ essay_detail: {
     submitted: "Avaliação enviada",
     submitted_desc: "Sua avaliação foi salva com sucesso.",
     submitted_locked: "Sua avaliação foi bloqueada e enviada com sucesso.",
-    submit_failed: "Falha ao enviar avaliação",
-    like_review_failed: "Falha ao curtir avaliação",
-    like_review_failed_desc: "Tente novamente."
+    submit_failed: "Falha ao enviar avaliação"
   }
 },
 user_profile: {
