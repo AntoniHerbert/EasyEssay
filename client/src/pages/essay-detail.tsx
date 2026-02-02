@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MessageSquare, Star, Users, Eye, Calendar, CheckCircle2, Heart, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, Users, Eye, Calendar, CheckCircle2, Heart, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -84,7 +84,6 @@ export default function EssayDetail() {
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       if (pageParam) params.append("cursor", pageParam as string);
-      
       const res = await apiRequest("GET", `/api/essays/${essayId}/peer-reviews?${params.toString()}`);
       return res.json();
     },
@@ -135,13 +134,7 @@ export default function EssayDetail() {
             rubricScores: rubricScoresArray,
           }
         : {
-            grammarScore: categoryScores.grammar ?? 100,
-            styleScore: categoryScores.style ?? 100,
-            clarityScore: categoryScores.clarity ?? 100,
-            structureScore: categoryScores.structure ?? 100,
-            contentScore: categoryScores.content ?? 100,
-            researchScore: categoryScores.research ?? 100,
-            overallScore,
+            ...categoryScores, overallScore,
           };
 
       const response = await apiRequest("POST", `/api/essays/${essayId}/peer-reviews`, payload);
@@ -207,7 +200,6 @@ export default function EssayDetail() {
     const fetchLikes = async () => {
       for (const review of reviews) {
         if (reviewLikes[review.id]) continue;
-
         try {
           const response = await fetch(`/api/peer-reviews/${review.id}/likes`);
           if (response.ok) {
@@ -301,7 +293,6 @@ export default function EssayDetail() {
         const review = await getOrCreateReviewMutation.mutateAsync();
         reviewId = review.id;
       }
-      
       await addCorrectionMutation.mutateAsync({
         reviewId,
         correction: {
@@ -335,7 +326,6 @@ export default function EssayDetail() {
       return;
     }
 
-
     const rubricScoresArray = hasCustomRubric && REVIEW_CATEGORIES.length > 0
       ? REVIEW_CATEGORIES.map(cat => ({
           categoryName: String(cat.key),
@@ -351,32 +341,12 @@ export default function EssayDetail() {
       overallScore = Object.values(categoryScores).reduce((sum, score) => sum + score, 0);
     }
 
-    const payload: Record<string, unknown> = hasCustomRubric
-      ? {
-          grammarScore: 100,
-          styleScore: 100,
-          clarityScore: 100,
-          structureScore: 100,
-          contentScore: 100,
-          researchScore: 100,
-          overallScore,
-          rubricScores: rubricScoresArray,
-          isSubmitted: true,
-        }
-      : {
-          grammarScore: categoryScores.grammar ?? 100,
-          styleScore: categoryScores.style ?? 100,
-          clarityScore: categoryScores.clarity ?? 100,
-          structureScore: categoryScores.structure ?? 100,
-          contentScore: categoryScores.content ?? 100,
-          researchScore: categoryScores.research ?? 100,
-          overallScore,
-          isSubmitted: true,
-        };
+    const payload = hasCustomRubric
+      ? { overallScore, rubricScores: rubricScoresArray, isSubmitted: true, grammarScore: 100, styleScore: 100, clarityScore: 100, structureScore: 100, contentScore: 100, researchScore: 100 }
+      : { ...categoryScores, overallScore, isSubmitted: true };
     
     try {
       await apiRequest("PATCH", `/api/peer-reviews/${activeReviewId}`, payload);
-      
       queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}/peer-reviews`] });
       
       toast({
@@ -393,14 +363,9 @@ export default function EssayDetail() {
   };
 
   const currentUserReview = reviews.find(r => r.reviewerId === user?.id);
-  
   const isReviewSubmitted = currentUserReview?.isSubmitted ?? false;
-
-  const getCategoryCorrections = (category: string) => {
-    if (!currentUserReview) return [];
-    return currentUserReview.corrections.filter(c => c.category === category);
-  };
-
+  const getCategoryCorrections = (category: string) => currentUserReview ? currentUserReview.corrections.filter(c => c.category === category) : [];
+  
   const isCategoryReviewed = (category: string) => {
     if (hasCustomRubric) {
       const catInfo = REVIEW_CATEGORIES.find(c => c.key === category);
@@ -411,7 +376,6 @@ export default function EssayDetail() {
   };
 
   const allCategoriesReviewed = REVIEW_CATEGORIES.every(cat => isCategoryReviewed(cat.key));
-
   const reviewedCategoriesCount = REVIEW_CATEGORIES.filter(cat => isCategoryReviewed(cat.key)).length;
   const reviewProgress = (reviewedCategoriesCount / REVIEW_CATEGORIES.length) * 100;
 
@@ -426,7 +390,6 @@ export default function EssayDetail() {
     }
 
     const sortedCorrections = [...viewingReview.corrections].sort((a, b) => a.textStartIndex - b.textStartIndex);
-
     const segments: JSX.Element[] = [];
     let lastIndex = 0;
 
@@ -438,10 +401,8 @@ export default function EssayDetail() {
           </span>
         );
       }
-
       const category = REVIEW_CATEGORIES.find(c => c.key === correction.category);
       const highlightClass = category ? category.color : 'bg-yellow-200 dark:bg-yellow-800';
-
       segments.push(
         <mark
           key={`highlight-${idx}`}
@@ -452,7 +413,6 @@ export default function EssayDetail() {
           {text.substring(correction.textStartIndex, correction.textEndIndex)}
         </mark>
       );
-
       lastIndex = correction.textEndIndex;
     });
 
@@ -489,12 +449,18 @@ export default function EssayDetail() {
 
   const essayData = essay as Essay;
   
-  const overallScore = hasCustomRubric 
+  // --- LÓGICA DE EXIBIÇÃO DE NOTA ---
+  const myCurrentScore = hasCustomRubric 
     ? Object.values(rubricScores).reduce((sum, score) => sum + score, 0)
     : Object.values(categoryScores).reduce((sum, score) => sum + score, 0);
   const maxScore = hasCustomRubric
     ? REVIEW_CATEGORIES.reduce((sum, cat) => sum + (cat.maxScore || 200), 0)
     : 1200;
+
+  // Se sou o autor, vejo a média do backend. Se sou revisor, vejo minha nota local.
+  const isAuthor = user?.id === essayData.authorId;
+  const headerScore = isAuthor ? essayData.averageScore : myCurrentScore;
+  const headerLabel = isAuthor ? (essayData.reviewCount > 0 ? "Average Score" : "No reviews") : "Your Score";
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6">
@@ -508,9 +474,7 @@ export default function EssayDetail() {
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Avatar className="w-6 h-6">
-                <AvatarFallback>
-                  {essayData?.authorName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </AvatarFallback>
+                <AvatarFallback>{essayData?.authorName.split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
               </Avatar>
               <span>{essayData?.authorName}</span>
             </div>
@@ -525,8 +489,8 @@ export default function EssayDetail() {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-primary">{overallScore}/{maxScore}</div>
-          <div className="text-sm text-muted-foreground">Overall Score</div>
+          <div className="text-2xl font-bold text-primary">{headerScore}/{maxScore}</div>
+          <div className="text-sm text-muted-foreground">{headerLabel}</div>
         </div>
       </div>
 
@@ -561,14 +525,13 @@ export default function EssayDetail() {
             </CardContent>
           </Card>
 
-          {/* Peer Corrections Display - Filtered by viewing review */}
+          {/* Peer Corrections Display */}
           {(() => {
             const reviewsToShow = viewingReviewId 
               ? reviews.filter(r => r.id === viewingReviewId)
               : reviews;
             
             const hasComments = reviewsToShow.some(r => r.corrections.length > 0);
-
             if (!hasComments) return null;
 
             return (
@@ -583,7 +546,6 @@ export default function EssayDetail() {
                   <div className="space-y-6">
                     {reviewsToShow.map((review) => {
                       if (review.corrections.length === 0) return null;
-                      
                       return (
                         <div key={review.id} className="space-y-3 pb-4 border-b last:border-b-0">
                           <div className="flex items-center justify-between">
@@ -605,7 +567,6 @@ export default function EssayDetail() {
                             {REVIEW_CATEGORIES.map((cat) => {
                               const categoryCorrections = review.corrections.filter(c => c.category === cat.key);
                               if (categoryCorrections.length === 0) return null;
-                              
                               return (
                                 <div key={cat.key} className="space-y-2">
                                   <Badge className={cat.color + " text-xs"}>
@@ -730,7 +691,6 @@ export default function EssayDetail() {
                         data-testid={`slider-${category.key}`}
                       />
                     </div>
-
                     <Separator />
 
                     {/* Text Selection & Comment */}
@@ -803,8 +763,8 @@ export default function EssayDetail() {
                     </>
                   ) : (
                     <>
-                      <div className="text-xl font-bold text-primary">{overallScore}/1200</div>
-                      <div className="text-xs text-muted-foreground">Overall Score ({Math.round((overallScore / 1200) * 100)}%)</div>
+                      <div className="text-xl font-bold text-primary">{myCurrentScore}/{maxScore}</div>
+                      <div className="text-xs text-muted-foreground">Your Review Score ({Math.round((myCurrentScore / maxScore) * 100)}%)</div>
                     </>
                   )}
                 </div>
@@ -844,7 +804,6 @@ export default function EssayDetail() {
                   {reviews.map((review) => {
                     const isActive = viewingReviewId === review.id;
                     const isAI = review.reviewerId === "AI";
-                    
                     return (
                       <div 
                         key={review.id} 
