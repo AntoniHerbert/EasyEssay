@@ -9,8 +9,16 @@ const router = Router();
 
 router.get("/communities", async (req, res) => {
   try {
-    const communities = await communityService.getCommunities();
-    res.json(communities);
+    const { userId, limit, cursor, q } = req.query;
+
+    const result = await communityService.getCommunities(
+      userId as string,     
+      limit as string,     
+      cursor as string,     
+      q as string            
+    );
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch communities" });
   }
@@ -82,7 +90,6 @@ router.post("/communities/:id/join", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
   try {
     const result = await communityService.joinCommunity(req.params.id, req.session.userId);
-    // Se for 'request', retornamos o request. Se for 'member', retornamos o member.
     res.status(201).json(result.type === 'request' 
       ? { type: 'request', request: result.result } 
       : { type: 'member', member: result.result });

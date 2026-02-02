@@ -33,8 +33,36 @@ export class CommunityService {
 
   // --- Communities ---
 
-  async getCommunities() {
-    return this.store.getCommunities();
+  async getCommunities(
+    userIdFilter?: string, 
+    limitStr?: string,
+    cursorStr?: string,
+    searchQuery?: string
+  ) {
+    const limit = limitStr ? parseInt(limitStr) : 20;
+
+    let cursor: Date | undefined;
+    if (cursorStr) {
+      const parsed = new Date(cursorStr);
+      if (!isNaN(parsed.getTime())) cursor = parsed;
+    }
+
+    const communities = await this.store.getCommunities(
+      limit,
+      cursor,
+      userIdFilter,
+      searchQuery
+    );
+
+    let nextCursor: string | null = null;
+    if (communities.length === limit) {
+      nextCursor = communities[communities.length - 1].createdAt.toISOString();
+    }
+
+    return {
+      data: communities,
+      nextCursor
+    };
   }
 
   async getCommunity(id: string) {

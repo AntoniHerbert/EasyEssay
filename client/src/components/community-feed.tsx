@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { type Essay, type Community, type CommunityMember, type CommunityTopic, type TopicSubmission } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Bookmark, Users, Clock, BookOpen, UserPlus, User, Plus, Crown, LogOut, FileText, Calendar, ChevronRight, ArrowLeft, Search, Copy, Check, Lock, Globe, UserCheck, UserX } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Users, Clock, BookOpen, UserPlus, User, Plus, Crown, LogOut, FileText, Calendar, ChevronRight, ArrowLeft, Search, Copy, Check, Lock, Globe, UserCheck, UserX, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { type JoinRequest } from "@shared/schema";
 import { useAuth } from "@/contexts/auth-context";
@@ -26,44 +26,83 @@ interface CommunityWithMembership extends Community {
   userRole?: string;
 }
 
+interface CommunityPage {
+  data: Community[];
+  nextCursor: string | null;
+}
+
 export function CommunityFeed() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
-  const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
-   
+  
   const [activeTab, setActiveTab] = useState("essays");
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [selectedTopicView, setSelectedTopicView] = useState<CommunityTopic | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createTopicDialogOpen, setCreateTopicDialogOpen] = useState(false);
+  
   const [newCommunityName, setNewCommunityName] = useState("");
   const [newCommunityDescription, setNewCommunityDescription] = useState("");
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicDeadline, setNewTopicDeadline] = useState("");
-  const [communitySearch, setCommunitySearch] = useState("");
-  const [codeCopied, setCodeCopied] = useState(false);
   const [newCommunityIsPublic, setNewCommunityIsPublic] = useState(true);
+  
+  const [communitySearch, setCommunitySearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(""); 
   const [communityFilter, setCommunityFilter] = useState<'all' | 'member'>('all');
+  
+  const [codeCopied, setCodeCopied] = useState(false);
   const [transferLeadershipDialogOpen, setTransferLeadershipDialogOpen] = useState(false);
   const [selectedNewLeader, setSelectedNewLeader] = useState<string | null>(null);
-   
+    
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(communitySearch);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [communitySearch]);
 
   const { data: essays = [], isLoading } = useQuery({
     queryKey: ["/api/essays?isPublic=true"],
   });
 
-  const { data: allCommunities = [], isLoading: communitiesLoading } = useQuery<Community[]>({
-    queryKey: ["/api/communities"],
+  const { 
+    data: communitiesData, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    isLoading: communitiesLoading 
+  } = useInfiniteQuery<CommunityPage>({
+    queryKey: ["/api/communities", communityFilter, debouncedSearch],
     enabled: activeTab === "communities",
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.append("cursor", pageParam as string);
+      if (debouncedSearch) params.append("q", debouncedSearch);
+      
+      if (communityFilter === "member" && user?.id) {
+        params.append("userId", user.id);
+      }
+
+      const res = await apiRequest("GET", `/api/communities?${params.toString()}`);
+      return res.json();
+    },
   });
 
-  const { data: userCommunities = [], isLoading: userCommunitiesLoading } = useQuery<CommunityMember[]>({
+  const allCommunities = useMemo(() => {
+    return communitiesData?.pages.flatMap((page) => page.data) || [];
+  }, [communitiesData]);
+
+  const { data: userCommunities = [] } = useQuery<CommunityMember[]>({
     queryKey: ["/api/user/communities"],
     enabled: activeTab === "communities" && !!user,
   });
@@ -96,6 +135,7 @@ export function CommunityFeed() {
     enabled: !!selectedTopicView,
   });
 
+
   const createTopicMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; deadline?: string }) => {
       return apiRequest("POST", `/api/communities/${selectedCommunity?.id}/topics`, data);
@@ -112,11 +152,7 @@ export function CommunityFeed() {
       });
     },
     onError: () => {
-      toast({
-        title: t('community_feed.toast.topic_failed'),
-        description: t('community_feed.toast.topic_failed_desc'),
-        variant: "destructive",
-      });
+      toast({ title: t('community_feed.toast.topic_failed'), description: t('community_feed.toast.topic_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -126,17 +162,10 @@ export function CommunityFeed() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/topics", selectedTopicView?.id, "submissions"] });
-      toast({
-        title: t('community_feed.toast.reviewed'),
-        description: t('community_feed.toast.reviewed_desc'),
-      });
+      toast({ title: t('community_feed.toast.reviewed'), description: t('community_feed.toast.reviewed_desc') });
     },
     onError: () => {
-      toast({
-        title: t('community_feed.toast.review_failed'),
-        description: t('community_feed.toast.review_failed_desc'),
-        variant: "destructive",
-      });
+      toast({ title: t('community_feed.toast.review_failed'), description: t('community_feed.toast.review_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -148,11 +177,7 @@ export function CommunityFeed() {
       queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
     },
     onError: () => {
-      toast({
-        title: t('community_feed.toast.action_failed'),
-        description: t('community_feed.toast.like_failed_desc'),
-        variant: "destructive",
-      });
+      toast({ title: t('community_feed.toast.action_failed'), description: t('community_feed.toast.like_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -161,23 +186,16 @@ export function CommunityFeed() {
       return apiRequest("POST", "/api/communities", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/communities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/communities"] }); 
       queryClient.invalidateQueries({ queryKey: ["/api/user/communities"] });
       setCreateDialogOpen(false);
       setNewCommunityName("");
       setNewCommunityDescription("");
       setNewCommunityIsPublic(true);
-      toast({
-        title: t('community_feed.toast.comm_created'),
-        description: t('community_feed.toast.comm_created_desc'),
-      });
+      toast({ title: t('community_feed.toast.comm_created'), description: t('community_feed.toast.comm_created_desc') });
     },
     onError: () => {
-      toast({
-        title: t('community_feed.toast.comm_failed'),
-        description: t('community_feed.toast.comm_failed_desc'),
-        variant: "destructive",
-      });
+      toast({ title: t('community_feed.toast.comm_failed'), description: t('community_feed.toast.comm_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -187,28 +205,18 @@ export function CommunityFeed() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/communities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/communities"] }); 
       queryClient.invalidateQueries({ queryKey: ["/api/user/communities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/pending-requests"] });
       if (data.type === 'request') {
-        toast({
-          title: t('community_feed.toast.request_sent'),
-          description: t('community_feed.toast.request_sent_desc'),
-        });
+        toast({ title: t('community_feed.toast.request_sent'), description: t('community_feed.toast.request_sent_desc') });
       } else {
-        toast({
-          title: t('community_feed.toast.joined'),
-          description: t('community_feed.toast.joined_desc'),
-        });
+        toast({ title: t('community_feed.toast.joined'), description: t('community_feed.toast.joined_desc') });
       }
     },
     onError: (error: any) => {
       const message = error?.message || t('community_feed.toast.join_failed_desc');
-      toast({
-        title: t('community_feed.toast.join_failed'),
-        description: message,
-        variant: "destructive",
-      });
+      toast({ title: t('community_feed.toast.join_failed'), description: message, variant: "destructive" });
     },
   });
 
@@ -220,17 +228,10 @@ export function CommunityFeed() {
       queryClient.invalidateQueries({ queryKey: ["/api/communities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/communities"] });
       setSelectedCommunity(null);
-      toast({
-        title: t('community_feed.toast.left'),
-        description: t('community_feed.toast.left_desc'),
-      });
+      toast({ title: t('community_feed.toast.left'), description: t('community_feed.toast.left_desc') });
     },
     onError: () => {
-      toast({
-        title: t('community_feed.toast.leave_failed'),
-        description: t('community_feed.toast.leave_failed_desc'),
-        variant: "destructive",
-      });
+      toast({ title: t('community_feed.toast.leave_failed'), description: t('community_feed.toast.leave_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -479,10 +480,6 @@ export function CommunityFeed() {
                               <BookOpen className="w-4 h-4" />
                               <span>{essay.wordCount} {t('community.card.words')}</span>
                             </div>
-                            {/* <div className="flex items-center space-x-2">
-                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                              <span>{accuracyScore}% accuracy</span>
-                            </div> */}
                           </div>
                           <div className="flex items-center space-x-3">
                             <Button
@@ -537,9 +534,266 @@ export function CommunityFeed() {
     );
   };
 
+  const renderCommunitiesList = () => {
+    if (communitiesLoading && !allCommunities.length) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-6 bg-muted rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-2/3 mb-4"></div>
+                <div className="h-4 bg-muted rounded w-1/4"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">{t('community_feed.communities.title')}</h2>
+            <p className="text-muted-foreground">{t('community_feed.communities.subtitle')}</p>
+          </div>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="mt-4 sm:mt-0" data-testid="button-create-community">
+                <Plus className="w-4 h-4 mr-2" />
+                {t('community_feed.communities.create_btn')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('community_feed.dialogs.create_community.title')}</DialogTitle>
+                <DialogDescription>
+                  {t('community_feed.dialogs.create_community.desc')}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="community-name">{t('community_feed.dialogs.create_community.name_label')}</Label>
+                  <Input
+                    id="community-name"
+                    placeholder={t('community_feed.dialogs.create_community.name_placeholder')}
+                    value={newCommunityName}
+                    onChange={(e) => setNewCommunityName(e.target.value)}
+                    data-testid="input-community-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="community-description">{t('community_feed.dialogs.create_community.desc_label')}</Label>
+                  <Textarea
+                    id="community-description"
+                    placeholder={t('community_feed.dialogs.create_community.desc_placeholder')}
+                    value={newCommunityDescription}
+                    onChange={(e) => setNewCommunityDescription(e.target.value)}
+                    data-testid="input-community-description"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>{t('community_feed.dialogs.create_community.type_label')}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {newCommunityIsPublic ? t('community_feed.dialogs.create_community.public_desc') : t('community_feed.dialogs.create_community.private_desc')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {newCommunityIsPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    <Switch
+                      checked={newCommunityIsPublic}
+                      onCheckedChange={setNewCommunityIsPublic}
+                      data-testid="switch-community-public"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setCreateDialogOpen(false)}
+                  data-testid="button-cancel-create"
+                >
+                  {t('community_feed.dialogs.create_community.cancel')}
+                </Button>
+                <Button 
+                  onClick={() => createCommunityMutation.mutate({ 
+                    name: newCommunityName, 
+                    description: newCommunityDescription,
+                    isPublic: newCommunityIsPublic,
+                  })}
+                  disabled={!newCommunityName.trim() || createCommunityMutation.isPending}
+                  data-testid="button-submit-create"
+                >
+                  {createCommunityMutation.isPending ? t('community_feed.dialogs.create_community.creating') : t('community_feed.dialogs.create_community.create')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Filter toggle and search */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
+          <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
+            {[
+              { key: "all", label: t('community_feed.communities.filters.all') },
+              { key: "member", label: t('community_feed.communities.filters.member') },
+            ].map((filter) => (
+              <Button
+                key={filter.key}
+                variant={communityFilter === filter.key ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setCommunityFilter(filter.key as 'all' | 'member')}
+                className={communityFilter === filter.key ? "shadow-sm" : ""}
+                data-testid={`filter-${filter.key}`}
+              >
+                {filter.label}
+              </Button>
+            ))}
+          </div>
+          <div className="relative flex-1 w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={t('community_feed.communities.search_placeholder')}
+              value={communitySearch}
+              onChange={(e) => setCommunitySearch(e.target.value)}
+              className="pl-10"
+              data-testid="input-community-search"
+            />
+          </div>
+        </div>
+
+        {allCommunities.length === 0 && !communitiesLoading ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-medium mb-2">{t('community_feed.communities.no_communities')}</h3>
+              <p className="text-muted-foreground mb-4">
+                {t('community_feed.communities.be_first_community')}
+              </p>
+              <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-first-community">
+                <Plus className="w-4 h-4 mr-2" />
+                {t('community_feed.communities.create_btn')}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {allCommunities.map((community: Community) => {
+              const membership = getUserMembership(community.id);
+              const isMember = !!membership;
+              const isLeader = membership?.role === 'leader';
+
+              return (
+                <Card 
+                  key={community.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedCommunity(community)}
+                  data-testid={`community-card-${community.id}`}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold">{community.name}</h3>
+                          {community.isPublic ? (
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Globe className="w-3 h-3" />
+                              {t('community_feed.communities.card.public')}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              {t('community_feed.communities.card.private')}
+                            </Badge>
+                          )}
+                          {isLeader && (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Crown className="w-3 h-3" />
+                              {t('community_feed.communities.card.leader')}
+                            </Badge>
+                          )}
+                          {isMember && !isLeader && (
+                            <Badge variant="outline">{t('community_feed.communities.card.member')}</Badge>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                          {community.description || "No description"}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>{t('community_feed.communities.card.members_count', { count: community.memberCount })}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Crown className="w-4 h-4" />
+                            <span>{t('community_feed.communities.card.led_by', { name: community.leaderName })}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {!isMember && (
+                          hasPendingRequest(community.id) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled
+                              data-testid={`button-pending-${community.id}`}
+                            >
+                              <Clock className="w-4 h-4 mr-1" />
+                              {t('community_feed.communities.card.pending')}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => joinCommunityMutation.mutate(community.id)}
+                              disabled={joinCommunityMutation.isPending}
+                              data-testid={`button-join-${community.id}`}
+                            >
+                              <UserPlus className="w-4 h-4 mr-1" />
+                              {community.isPublic ? t('community_feed.communities.card.join') : t('community_feed.communities.card.request_join')}
+                            </Button>
+                          )
+                        )}
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {/* Load More Button */}
+            {hasNextPage && (
+              <div className="flex justify-center mt-8 pb-8">
+                <Button 
+                  variant="outline" 
+                  onClick={() => fetchNextPage()} 
+                  disabled={isFetchingNextPage}
+                  className="w-full sm:w-auto min-w-[150px]"
+                >
+                  {isFetchingNextPage ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('library.loading_more', 'Loading more...')}
+                    </>
+                  ) : (
+                    t('library.load_more', 'Load More')
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderCommunityDetail = () => {
     if (!selectedCommunity) return null;
-     
+      
     const membership = getUserMembership(selectedCommunity.id);
     const isLeader = membership?.role === 'leader';
     const isMember = !!membership;
@@ -892,7 +1146,7 @@ export function CommunityFeed() {
               const isPrimaryLeader = selectedCommunity.leaderId === member.userId;
               const canPromote = isLeader && member.role !== 'leader' && member.userId !== user?.id;
               const canDemote = selectedCommunity.leaderId === user?.id && member.role === 'leader' && member.userId !== user?.id;
-               
+                
               return (
                 <Card key={member.id} className="p-3" data-testid={`member-card-${member.id}`}>
                   <div className="flex flex-col gap-2">
@@ -953,7 +1207,7 @@ export function CommunityFeed() {
 
   const renderTopicDetail = () => {
     if (!selectedTopicView || !selectedCommunity) return null;
-     
+      
     const membership = getUserMembership(selectedCommunity.id);
     const isLeader = membership?.role === 'leader';
     const isMember = !!membership;
@@ -1001,7 +1255,6 @@ export function CommunityFeed() {
           </CardHeader>
         </Card>
 
-        {/* Leader Dashboard */}
         {isLeader && (
           <Card className="mb-6 border-primary/20">
             <CardHeader className="pb-3">
@@ -1011,7 +1264,6 @@ export function CommunityFeed() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Stats and Not Yet Submitted Section */}
               {(() => {
                 const participatingMembers = communityMembers.filter((m: CommunityMember) => m.role !== 'leader');
                 const participantCount = participatingMembers.length;
@@ -1022,7 +1274,7 @@ export function CommunityFeed() {
                 const notSubmittedMembers = participatingMembers.filter(
                   (m: CommunityMember) => !submittedUserIds.has(m.userId)
                 );
-                 
+                  
                 if (participantCount === 0) {
                   return (
                     <div className="text-center py-6 text-muted-foreground">
@@ -1031,14 +1283,15 @@ export function CommunityFeed() {
                     </div>
                   );
                 }
-                 
+                  
                 const unreviewedSubmissions = (memberSubmissions as SubmissionWithEssay[]).filter(s => !s.isReviewed);
                 const totalUnreviewedWords = unreviewedSubmissions.reduce((sum, s) => sum + (s.essay?.wordCount || 0), 0);
-                const reviewTimeMinutes = Math.ceil(totalUnreviewedWords / 200); // ~200 words per minute reading speed
-                 
+                const reviewTimeMinutes = Math.ceil(totalUnreviewedWords / 200);
+                  
                 return (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Stats Cards */}
                       <div className="bg-muted/50 rounded-lg p-4">
                         <p className="text-sm text-muted-foreground mb-1">{t('community_feed.topic.stats.submission_rate')}</p>
                         <div className="flex items-center gap-3">
@@ -1158,7 +1411,7 @@ export function CommunityFeed() {
             {isLeader && <Check className="w-5 h-5 text-green-600 dark:text-green-400" />}
             {isLeader ? t('community_feed.topic.submissions_list.title_leader') : t('community_feed.topic.submissions_list.title')} ({topicSubmissions.length})
           </h3>
-           
+            
           {submissionsLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
@@ -1221,260 +1474,6 @@ export function CommunityFeed() {
             </div>
           )}
         </div>
-      </div>
-    );
-  };
-
-  const renderCommunitiesList = () => {
-    if (communitiesLoading) {
-      return (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-6 bg-muted rounded w-1/3 mb-2"></div>
-                <div className="h-4 bg-muted rounded w-2/3 mb-4"></div>
-                <div className="h-4 bg-muted rounded w-1/4"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">{t('community_feed.communities.title')}</h2>
-            <p className="text-muted-foreground">{t('community_feed.communities.subtitle')}</p>
-          </div>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="mt-4 sm:mt-0" data-testid="button-create-community">
-                <Plus className="w-4 h-4 mr-2" />
-                {t('community_feed.communities.create_btn')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('community_feed.dialogs.create_community.title')}</DialogTitle>
-                <DialogDescription>
-                  {t('community_feed.dialogs.create_community.desc')}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="community-name">{t('community_feed.dialogs.create_community.name_label')}</Label>
-                  <Input
-                    id="community-name"
-                    placeholder={t('community_feed.dialogs.create_community.name_placeholder')}
-                    value={newCommunityName}
-                    onChange={(e) => setNewCommunityName(e.target.value)}
-                    data-testid="input-community-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="community-description">{t('community_feed.dialogs.create_community.desc_label')}</Label>
-                  <Textarea
-                    id="community-description"
-                    placeholder={t('community_feed.dialogs.create_community.desc_placeholder')}
-                    value={newCommunityDescription}
-                    onChange={(e) => setNewCommunityDescription(e.target.value)}
-                    data-testid="input-community-description"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>{t('community_feed.dialogs.create_community.type_label')}</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {newCommunityIsPublic ? t('community_feed.dialogs.create_community.public_desc') : t('community_feed.dialogs.create_community.private_desc')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {newCommunityIsPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                    <Switch
-                      checked={newCommunityIsPublic}
-                      onCheckedChange={setNewCommunityIsPublic}
-                      data-testid="switch-community-public"
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setCreateDialogOpen(false)}
-                  data-testid="button-cancel-create"
-                >
-                  {t('community_feed.dialogs.create_community.cancel')}
-                </Button>
-                <Button 
-                  onClick={() => createCommunityMutation.mutate({ 
-                    name: newCommunityName, 
-                    description: newCommunityDescription,
-                    isPublic: newCommunityIsPublic,
-                  })}
-                  disabled={!newCommunityName.trim() || createCommunityMutation.isPending}
-                  data-testid="button-submit-create"
-                >
-                  {createCommunityMutation.isPending ? t('community_feed.dialogs.create_community.creating') : t('community_feed.dialogs.create_community.create')}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Filter toggle and search */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-          <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
-            {[
-              { key: "all", label: t('community_feed.communities.filters.all') },
-              { key: "member", label: t('community_feed.communities.filters.member') },
-            ].map((filter) => (
-              <Button
-                key={filter.key}
-                variant={communityFilter === filter.key ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setCommunityFilter(filter.key as 'all' | 'member')}
-                className={communityFilter === filter.key ? "shadow-sm" : ""}
-                data-testid={`filter-${filter.key}`}
-              >
-                {filter.label}
-              </Button>
-            ))}
-          </div>
-          <div className="relative flex-1 w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder={t('community_feed.communities.search_placeholder')}
-              value={communitySearch}
-              onChange={(e) => setCommunitySearch(e.target.value)}
-              className="pl-10"
-              data-testid="input-community-search"
-            />
-          </div>
-        </div>
-
-        {allCommunities.filter(c => {
-          const matchesSearch = c.name.toLowerCase().includes(communitySearch.toLowerCase()) ||
-            (c.description || "").toLowerCase().includes(communitySearch.toLowerCase()) ||
-            (c.code || "").toLowerCase().includes(communitySearch.toLowerCase());
-          if (communityFilter === 'member') {
-            const userCommunityIds = new Set(userCommunities.map((m: CommunityMember) => m.communityId));
-            return matchesSearch && userCommunityIds.has(c.id);
-          }
-          return matchesSearch;
-        }).length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-medium mb-2">{t('community_feed.communities.no_communities')}</h3>
-              <p className="text-muted-foreground mb-4">
-                {t('community_feed.communities.be_first_community')}
-              </p>
-              <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-first-community">
-                <Plus className="w-4 h-4 mr-2" />
-                {t('community_feed.communities.create_btn')}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {allCommunities.filter(c => {
-              const matchesSearch = c.name.toLowerCase().includes(communitySearch.toLowerCase()) ||
-                (c.description || "").toLowerCase().includes(communitySearch.toLowerCase()) ||
-                (c.code || "").toLowerCase().includes(communitySearch.toLowerCase());
-              if (communityFilter === 'member') {
-                const userCommunityIds = new Set(userCommunities.map((m: CommunityMember) => m.communityId));
-                return matchesSearch && userCommunityIds.has(c.id);
-              }
-              return matchesSearch;
-            }).map((community: Community) => {
-              const membership = getUserMembership(community.id);
-              const isMember = !!membership;
-              const isLeader = membership?.role === 'leader';
-
-              return (
-                <Card 
-                  key={community.id} 
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setSelectedCommunity(community)}
-                  data-testid={`community-card-${community.id}`}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-semibold">{community.name}</h3>
-                          {community.isPublic ? (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Globe className="w-3 h-3" />
-                              {t('community_feed.communities.card.public')}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              {t('community_feed.communities.card.private')}
-                            </Badge>
-                          )}
-                          {isLeader && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Crown className="w-3 h-3" />
-                              {t('community_feed.communities.card.leader')}
-                            </Badge>
-                          )}
-                          {isMember && !isLeader && (
-                            <Badge variant="outline">{t('community_feed.communities.card.member')}</Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                          {community.description || "No description"}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            <span>{t('community_feed.communities.card.members_count', { count: community.memberCount })}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Crown className="w-4 h-4" />
-                            <span>{t('community_feed.communities.card.led_by', { name: community.leaderName })}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        {!isMember && (
-                          hasPendingRequest(community.id) ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled
-                              data-testid={`button-pending-${community.id}`}
-                            >
-                              <Clock className="w-4 h-4 mr-1" />
-                              {t('community_feed.communities.card.pending')}
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => joinCommunityMutation.mutate(community.id)}
-                              disabled={joinCommunityMutation.isPending}
-                              data-testid={`button-join-${community.id}`}
-                            >
-                              <UserPlus className="w-4 h-4 mr-1" />
-                              {community.isPublic ? t('community_feed.communities.card.join') : t('community_feed.communities.card.request_join')}
-                            </Button>
-                          )
-                        )}
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
       </div>
     );
   };

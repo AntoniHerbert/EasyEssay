@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, lt, ilike, or, exists } from "drizzle-orm"; 
 import { type Tx } from "../types";
 import { type ICommunityStore } from "./community.store";
 import { 
@@ -16,10 +16,52 @@ export class CommunityDbStore implements ICommunityStore {
 
   // --- Communities ---
 
-  async getCommunities(): Promise<Community[]> {
-    return await this.db
+  async getCommunities(
+    limit = 20,
+    cursor?: Date,
+    userId?: string,
+    searchQuery?: string
+  ): Promise<Community[]> {
+    let query = this.db
       .select()
-      .from(communities)
+      .from(communities);
+
+    const conditions = [];
+
+    if (userId) {
+      conditions.push(
+        exists(
+          this.db
+            .select({ id: communityMembers.id })
+            .from(communityMembers)
+            .where(and(
+              eq(communityMembers.communityId, communities.id),
+              eq(communityMembers.userId, userId)
+            ))
+        )
+      );
+    }
+
+    if (searchQuery) {
+      const pattern = `%${searchQuery}%`;
+      conditions.push(
+        or(
+          ilike(communities.name, pattern),
+          ilike(communities.description, pattern)
+        )
+      );
+    }
+
+    if (cursor) {
+      conditions.push(lt(communities.createdAt, cursor));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query
+      .limit(limit)
       .orderBy(desc(communities.createdAt));
   }
 
@@ -31,13 +73,15 @@ export class CommunityDbStore implements ICommunityStore {
     return result;
   }
 
-  async createCommunity(community: InsertCommunity): Promise<Community> {
-    const [result] = await this.db.insert(communities).values(community).returning();
+  async createCommunity(community: InsertCommunity, tx?: Tx): Promise<Community> {
+    const db = (tx || this.db) as any;
+    const [result] = await db.insert(communities).values(community).returning();
     return result;
   }
 
-  async updateCommunity(id: string, updates: Partial<InsertCommunity>): Promise<Community | undefined> {
-    const [result] = await this.db
+  async updateCommunity(id: string, updates: Partial<InsertCommunity>, tx?: Tx): Promise<Community | undefined> {
+    const db = (tx || this.db) as any;
+    const [result] = await db
       .update(communities)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(communities.id, id))
@@ -45,8 +89,9 @@ export class CommunityDbStore implements ICommunityStore {
     return result;
   }
 
-  async deleteCommunity(id: string): Promise<boolean> {
-    const result = await this.db
+  async deleteCommunity(id: string, tx?: Tx): Promise<boolean> {
+    const db = (tx || this.db) as any;
+    const result = await db
       .delete(communities)
       .where(eq(communities.id, id))
       .returning();
@@ -235,8 +280,9 @@ export class CommunityDbStore implements ICommunityStore {
       .orderBy(desc(joinRequests.createdAt));
   }
 
-  async createJoinRequest(request: InsertJoinRequest): Promise<JoinRequest> {
-    const [result] = await this.db.insert(joinRequests).values(request).returning();
+  async createJoinRequest(request: InsertJoinRequest, tx?: Tx): Promise<JoinRequest> {
+    const db = (tx || this.db) as any;
+    const [result] = await db.insert(joinRequests).values(request).returning();
     return result;
   }
 
