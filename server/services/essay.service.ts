@@ -1,5 +1,5 @@
 import { 
-    CreateEssayInput,
+  CreateEssayInput,
   insertEssaySchema, 
   UpdateEssayInput, 
   type InsertEssay 
@@ -12,20 +12,16 @@ import type { IEssayLikeStore } from "../storage/essayLikes/essayLike.store";
 import type { AiService } from "./ai.service";
 import { z } from "zod";
 
-
 export class EssayService {
 
-    constructor(
+  constructor(
     private essayStore: IEssayStore,
     private profileStore: IProfileStore,
     private aiService: AiService,
-
     private peerReviewStore: IPeerReviewStore,
     private essayLikeStore: IEssayLikeStore,
-
     private txManager: ITransactionManager 
   ) {}
-
 
   async getEssays(
     requestingUserId: string | undefined,
@@ -33,10 +29,14 @@ export class EssayService {
     authorIdFilter?: string,
     cursorStr?: string,
     excludeAuthorId?: string,
-    searchQuery?: string
+    searchQuery?: string,
+    statusFilter?: "drafts" | "analyzed" | "all",
+    communityId?: string
   ) {
     let isPublic = isPublicString === "true" ? true : isPublicString === "false" ? false : undefined;
+    
     const isViewingOwnProfile = authorIdFilter && authorIdFilter === requestingUserId;
+    
     if (!isViewingOwnProfile) {
       isPublic = true;
     }
@@ -48,7 +48,6 @@ export class EssayService {
     }
 
     const limit = 10;
-
     const safeSearch = searchQuery?.slice(0, 100);
 
     const essays = await this.essayStore.getEssays(
@@ -57,7 +56,9 @@ export class EssayService {
       limit, 
       cursorDate, 
       excludeAuthorId, 
-      safeSearch
+      safeSearch,
+      statusFilter,
+      communityId 
     );
 
     let nextCursor: string | null = null;
@@ -67,9 +68,9 @@ export class EssayService {
     }
 
     return {
-          data: essays,
-          nextCursor
-        };
+      data: essays,
+      nextCursor
+    };
   }
 
   async getEssayById(essayId: string, requestingUserId: string) {
@@ -96,7 +97,6 @@ export class EssayService {
       authorName: userProfile?.displayName || "Anonymous",
       wordCount,
     });
-    
 
     if (essay.isPublic) {
       console.log(`[EssayService] Triggering auto-analysis for essay: ${essay.id}`);
@@ -108,9 +108,8 @@ export class EssayService {
     return essay;
   }
 
-async updateEssay(essayId: string, requestingUserId: string, data: UpdateEssayInput) {
-
-  const essay = await this.essayStore.getEssay(essayId);
+  async updateEssay(essayId: string, requestingUserId: string, data: UpdateEssayInput) {
+    const essay = await this.essayStore.getEssay(essayId);
     
     if (!essay) return null;
 
@@ -134,7 +133,6 @@ async updateEssay(essayId: string, requestingUserId: string, data: UpdateEssayIn
     }
 
     await this.txManager.transaction(async (tx) => {
-
       await Promise.all([
         this.peerReviewStore.deleteByEssayId(essayId, tx),
         this.essayLikeStore.deleteByEssayId(essayId, tx),
@@ -145,5 +143,4 @@ async updateEssay(essayId: string, requestingUserId: string, data: UpdateEssayIn
 
     return true;
   }
-
 }

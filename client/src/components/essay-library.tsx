@@ -1,16 +1,15 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next"; // <--- Importado
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { type Essay, type TopicSubmission } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Edit, Share, Check, Clock, Globe, FileText, Eye, Trash2, Users } from "lucide-react";
+import { Search, Plus, Edit, Share, Check, Clock, Globe, FileText, Eye, Trash2, Users, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Link } from "wouter";
+import { type Essay, type TopicSubmission } from "@shared/schema";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,8 +39,13 @@ interface EnrichedSubmission extends TopicSubmission {
   communityName: string;
 }
 
+interface EssayPage {
+  data: Essay[];
+  nextCursor: string | null;
+}
+
 export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
-  const { t, i18n } = useTranslation(); // <--- Hook
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -50,55 +54,70 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: essays = [], isLoading } = useQuery({
-    queryKey: [`/api/essays?authorId=${user?.id}`],
-    enabled: !!user?.id,
-  });
-
   const { data: submissions = [] } = useQuery<EnrichedSubmission[]>({
     queryKey: ["/api/user/submissions"],
     enabled: !!user?.id,
   });
 
-  const essaySubmissionMap = new Map<string, EnrichedSubmission>();
-  submissions.forEach((sub) => {
-    essaySubmissionMap.set(sub.essayId, sub);
-  });
+  const essaySubmissionMap = useMemo(() => {
+    const map = new Map<string, EnrichedSubmission>();
+    submissions.forEach((sub) => {
+      map.set(sub.essayId, sub);
+    });
+    return map;
+  }, [submissions]);
 
-  const communities = Array.from(
-    new Set(submissions.filter(s => s.communityId).map(s => JSON.stringify({ id: s.communityId, name: s.communityName })))
-  ).map(s => JSON.parse(s) as { id: string; name: string });
+  const communities = useMemo(() => {
+    return Array.from(
+      new Set(submissions.filter(s => s.communityId).map(s => JSON.stringify({ id: s.communityId, name: s.communityName })))
+    ).map(s => JSON.parse(s) as { id: string; name: string });
+  }, [submissions]);
 
-  const filteredEssays = (essays as Essay[]).filter((essay: Essay) => {
-    const matchesSearch = essay.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          essay.content.toLowerCase().includes(searchQuery.toLowerCase());
+  const { 
+    data, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    isLoading 
+  } = useInfiniteQuery<EssayPage>({
+    queryKey: [`/api/essays`, user?.id, searchQuery, activeFilter, communityFilter], 
     
-    const submission = essaySubmissionMap.get(essay.id);
-    
-    if (communityFilter !== "all") {
-      if (!submission || submission.communityId !== communityFilter) {
-        return false;
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.append("authorId", user?.id || "");
+      
+      if (pageParam) params.append("cursor", pageParam as string);
+      
+      if (searchQuery) params.append("q", searchQuery);
+      
+      if (activeFilter === "drafts") {
+         params.append("status", "drafts");
+      } else if (activeFilter === "analyzed") {
+         params.append("status", "analyzed");
       }
-    }
-    
-    switch (activeFilter) {
-      case "drafts":
-        return matchesSearch && !essay.isAnalyzed && !essay.isPublic;
-      case "communities":
-        return matchesSearch && !!submission;
-      case "analyzed":
-        return matchesSearch && essay.isAnalyzed;
-      default:
-        return matchesSearch;
-    }
+      
+      if (activeFilter === "communities" && communityFilter !== "all") {
+         params.append("communityId", communityFilter);
+      }
+
+      const res = await apiRequest("GET", `/api/essays?${params.toString()}`);
+      return res.json();
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!user?.id,
   });
+
+  const allEssays = useMemo(() => {
+    return data?.pages.flatMap((page) => page.data) || [];
+  }, [data]);
 
   const deleteEssayMutation = useMutation({
     mutationFn: async (essayId: string) => {
       return apiRequest("DELETE", `/api/essays/${essayId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/essays?authorId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/essays`] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/submissions"] });
       toast({
         title: t('library.toast.deleted_title'),
@@ -120,7 +139,20 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
     },
     onSuccess: async (response) => {
       const updatedEssay = await response.json();
-      queryClient.invalidateQueries({ queryKey: [`/api/essays?authorId=${user?.id}`] });
+      
+      queryClient.setQueryData(
+        [`/api/essays`, user?.id, searchQuery, activeFilter, communityFilter], 
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: EssayPage) => ({
+              ...page,
+              data: page.data.map((e: Essay) => e.id === updatedEssay.id ? updatedEssay : e)
+            }))
+          };
+      });
+
       toast({
         title: updatedEssay.isPublic 
           ? t('library.toast.published_title') 
@@ -264,7 +296,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       </div>
 
       {/* Essays Grid */}
-      {filteredEssays.length === 0 ? (
+      {allEssays.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -286,102 +318,123 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredEssays.map((essay: Essay) => (
-            <Card key={essay.id} className="hover:shadow-md transition-shadow" data-testid={`essay-card-${essay.id}`}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-lg line-clamp-2 flex-1 mr-2">
-                    {essay.title}
-                  </h3>
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-1"
-                      onClick={() => togglePublishMutation.mutate({
-                        essayId: essay.id,
-                        isPublic: !essay.isPublic
-                      })}
-                      disabled={togglePublishMutation.isPending}
-                      data-testid={`button-share-${essay.id}`}
-                    >
-                      <Share className="w-4 h-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-1 text-destructive hover:text-destructive"
-                          data-testid={`button-delete-${essay.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{t('library.alert.delete_title')}</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t('library.alert.delete_desc', { title: essay.title })}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{t('library.alert.cancel')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteEssayMutation.mutate(essay.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            {t('library.alert.confirm')}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-                
-                <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                  {essay.content.substring(0, 150)}...
-                </p>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                  {/* Data localizada */}
-                  <span>{new Date(essay.updatedAt).toLocaleDateString(i18n.language)}</span>
-                  <span>{t('library.card.words', { count: essay.wordCount })}</span>
-                </div>
-                
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {getStatusBadge(essay)}
-                  {getCommunityBadge(essay)}
-                </div>
-                
-                <div className="flex items-center justify-end">
-                  {essay.isAnalyzed ? (
-                    <Link href={`/essay/${essay.id}`}>
+        <div className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {allEssays.map((essay: Essay) => (
+              <Card key={essay.id} className="hover:shadow-md transition-shadow" data-testid={`essay-card-${essay.id}`}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-lg line-clamp-2 flex-1 mr-2">
+                      {essay.title}
+                    </h3>
+                    <div className="flex items-center space-x-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        data-testid={`button-view-${essay.id}`}
+                        className="h-auto p-1"
+                        onClick={() => togglePublishMutation.mutate({
+                          essayId: essay.id,
+                          isPublic: !essay.isPublic
+                        })}
+                        disabled={togglePublishMutation.isPending}
+                        data-testid={`button-share-${essay.id}`}
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        {t('library.card.view')}
+                        <Share className="w-4 h-4" />
                       </Button>
-                    </Link>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEditEssay?.(essay.id)}
-                      data-testid={`button-edit-${essay.id}`}
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      {t('library.card.edit')}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-1 text-destructive hover:text-destructive"
+                            data-testid={`button-delete-${essay.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t('library.alert.delete_title')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t('library.alert.delete_desc', { title: essay.title })}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t('library.alert.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteEssayMutation.mutate(essay.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {t('library.alert.confirm')}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                  
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {essay.content.substring(0, 150)}...
+                  </p>
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                    <span>{new Date(essay.updatedAt).toLocaleDateString(i18n.language)}</span>
+                    <span>{t('library.card.words', { count: essay.wordCount })}</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {getStatusBadge(essay)}
+                    {getCommunityBadge(essay)}
+                  </div>
+                  
+                  <div className="flex items-center justify-end">
+                    {essay.isAnalyzed ? (
+                      <Link href={`/essay/${essay.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid={`button-view-${essay.id}`}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          {t('library.card.view')}
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEditEssay?.(essay.id)}
+                        data-testid={`button-edit-${essay.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        {t('library.card.edit')}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {hasNextPage && (
+            <div className="flex justify-center mt-8 pb-8">
+              <Button 
+                variant="outline" 
+                onClick={() => fetchNextPage()} 
+                disabled={isFetchingNextPage}
+                className="w-full sm:w-auto min-w-[150px]"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('library.loading_more', 'Carregando mais...')}
+                  </>
+                ) : (
+                  t('library.load_more', 'Carregar mais')
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

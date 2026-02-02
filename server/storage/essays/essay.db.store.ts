@@ -1,6 +1,6 @@
 import { type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
-import { eq, and, desc, lt, ne, ilike, or } from "drizzle-orm";
+import { eq, and, desc, lt, ne, ilike, or, exists } from "drizzle-orm"; 
 import { type Essay, type InsertEssay, type RubricCategory } from "@shared/schema";
 import { IEssayStore } from "./essay.store";
 import { type Tx } from "../types"; 
@@ -40,8 +40,11 @@ export class EssayDbStore implements IEssayStore {
     limit = 20,
     cursor?: Date,
     excludeAuthorId?: string,
-    searchQuery?: string
+    searchQuery?: string,
+    statusFilter?: "drafts" | "analyzed" | "all",
+    communityId?: string
   ): Promise<Essay[]> {
+    
     let query = this.db
       .select({
         essay: schema.essays,
@@ -53,16 +56,42 @@ export class EssayDbStore implements IEssayStore {
       );
     
     const conditions = [];
-    if (isPublic !== undefined) {
-      conditions.push(eq(schema.essays.isPublic, isPublic));
+
+    if (statusFilter === "drafts") {
+      conditions.push(eq(schema.essays.isPublic, false));
+      conditions.push(eq(schema.essays.isAnalyzed, false));
+    } else if (statusFilter === "analyzed") {
+      conditions.push(eq(schema.essays.isAnalyzed, true));
+    } else {
+      if (isPublic !== undefined) {
+        conditions.push(eq(schema.essays.isPublic, isPublic));
+      }
     }
+
+    if (communityId && communityId !== "all") {
+      conditions.push(
+        exists(
+          this.db
+            .select({ id: schema.topicSubmissions.id })
+            .from(schema.topicSubmissions)
+            .innerJoin(
+              schema.communityTopics,
+              eq(schema.topicSubmissions.topicId, schema.communityTopics.id)
+            )
+            .where(and(
+              eq(schema.topicSubmissions.essayId, schema.essays.id),
+              eq(schema.communityTopics.communityId, communityId)
+            ))
+        )
+      );
+    }
+
     if (authorId) {
       conditions.push(eq(schema.essays.authorId, authorId));
     }
     if (cursor) {
       conditions.push(lt(schema.essays.createdAt, cursor));
     }
-
     if (excludeAuthorId) {
       conditions.push(ne(schema.essays.authorId, excludeAuthorId));
     }
