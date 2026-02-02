@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MessageSquare, Star, Users, Eye, Calendar, CheckCircle2, Heart } from "lucide-react";
+import { ArrowLeft, MessageSquare, Star, Users, Eye, Calendar, CheckCircle2, Heart, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -35,6 +35,11 @@ const RUBRIC_COLORS = [
   'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
   'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
 ];
+
+interface ReviewPage {
+  data: PeerReview[];
+  nextCursor: string | null;
+}
 
 export default function EssayDetail() {
   const { user } = useAuth();
@@ -65,10 +70,29 @@ export default function EssayDetail() {
     enabled: !!essayId,
   });
 
-  const { data: reviews = [], isLoading: reviewsLoading } = useQuery<PeerReview[]>({
+  const { 
+    data: reviewsData, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    isLoading: reviewsLoading 
+  } = useInfiniteQuery<ReviewPage>({
     queryKey: [`/api/essays/${essayId}/peer-reviews`],
     enabled: !!essayId,
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.append("cursor", pageParam as string);
+      
+      const res = await apiRequest("GET", `/api/essays/${essayId}/peer-reviews?${params.toString()}`);
+      return res.json();
+    },
   });
+
+  const reviews = useMemo(() => {
+    return reviewsData?.pages.flatMap((page) => page.data) || [];
+  }, [reviewsData]);
 
   const hasCustomRubric = essay?.rubric && essay.rubric.length > 0;
 
@@ -182,6 +206,8 @@ export default function EssayDetail() {
   useEffect(() => {
     const fetchLikes = async () => {
       for (const review of reviews) {
+        if (reviewLikes[review.id]) continue;
+
         try {
           const response = await fetch(`/api/peer-reviews/${review.id}/likes`);
           if (response.ok) {
@@ -198,7 +224,7 @@ export default function EssayDetail() {
     if (reviews.length > 0) {
       fetchLikes();
     }
-  }, [reviews]);
+  }, [reviews, reviewLikes]);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -902,6 +928,28 @@ export default function EssayDetail() {
                     );
                   })}
                 </div>
+                
+                {hasNextPage && (
+                  <div className="flex justify-center mt-4 pt-2 border-t">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fetchNextPage()} 
+                      disabled={isFetchingNextPage}
+                      size="sm"
+                      className="w-full"
+                    >
+                      {isFetchingNextPage ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Loading more...
+                        </>
+                      ) : (
+                        'Load More Reviews'
+                      )}
+                    </Button>
+                  </div>
+                )}
+
               </CardContent>
             </Card>
           )}
