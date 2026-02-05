@@ -611,6 +611,66 @@ thread: {
     send_failed: "Failed to send",
     send_failed_desc: "Could not send your message. Please try again."
   }
+},
+welcome: {
+  header: {
+    login: "Log In",
+    get_started: "Get Started"
+  },
+  hero: {
+    badge: "AI-Powered Writing Assistant",
+    title: "Write Better Essays,",
+    title_highlight: "Together",
+    subtitle: "Get instant AI feedback, discover writing resources, and collaborate with a community of writers to improve your craft.",
+    cta_primary: "Start Writing",
+    cta_secondary: "Learn More"
+  },
+  features: {
+    title: "Everything You Need to Write",
+    subtitle: "From drafting to polishing, Essay AI supports your entire writing journey.",
+    editor: {
+      title: "Smart Essay Editor",
+      desc: "Write your essays with a clean, distraction-free editor. Save drafts, organize your work, and pick up right where you left off.",
+      check1: "Auto-save and draft management",
+      check2: "Personal essay library"
+    },
+    ai: {
+      title: "AI-Powered Analysis",
+      desc: "Get instant, detailed feedback on grammar, style, clarity, and structure. Understand your strengths and where to improve.",
+      check1: "Grammar and style corrections",
+      check2: "Custom rubric scoring"
+    },
+    explore: {
+      title: "Explore Resources",
+      desc: "Browse a community-driven library of topics, templates, quotes, and scoring rubrics to kickstart your writing.",
+      check1: "Essay topics and prompts",
+      check2: "Fill-in-the-blank templates"
+    },
+    community: {
+      title: "Community & Peer Review",
+      desc: "Share your essays with a supportive community. Give and receive feedback, like your favorites, and grow together.",
+      check1: "Peer corrections and suggestions",
+      check2: "Community engagement with likes"
+    }
+  },
+  how_it_works: {
+    title: "How It Works",
+    subtitle: "Three simple steps to better writing",
+    step1_title: "Write Your Essay",
+    step1_desc: "Use the editor or start from a template. Pick a topic from the Explore page to get inspired.",
+    step2_title: "Get AI Feedback",
+    step2_desc: "Submit your essay for analysis. Receive detailed corrections with scores based on your chosen rubric.",
+    step3_title: "Share & Improve",
+    step3_desc: "Publish to the community, get peer reviews, and refine your writing with every iteration."
+  },
+  cta_section: {
+    title: "Ready to Write Your Best Essay?",
+    desc: "Join a community of writers who are improving their craft with AI-powered feedback and peer collaboration.",
+    btn: "Get Started Now"
+  },
+  footer: {
+    tagline: "Write better. Write together."
+  }
 }
       }},
 pt: {
@@ -1191,6 +1251,66 @@ thread: {
   toast: {
     send_failed: "Falha ao enviar",
     send_failed_desc: "Não foi possível enviar sua mensagem. Tente novamente."
+  }
+},
+welcome: {
+  header: {
+    login: "Entrar",
+    get_started: "Começar"
+  },
+  hero: {
+    badge: "Assistente de Escrita com IA",
+    title: "Escreva Redações Melhores,",
+    title_highlight: "Juntos",
+    subtitle: "Receba feedback instantâneo da IA, descubra recursos de escrita e colabore com uma comunidade de escritores para melhorar sua técnica.",
+    cta_primary: "Começar a Escrever",
+    cta_secondary: "Saiba Mais"
+  },
+  features: {
+    title: "Tudo o Que Você Precisa para Escrever",
+    subtitle: "Do rascunho ao polimento, o Essay AI apoia toda a sua jornada de escrita.",
+    editor: {
+      title: "Editor de Redação Inteligente",
+      desc: "Escreva suas redações com um editor limpo e sem distrações. Salve rascunhos, organize seu trabalho e continue de onde parou.",
+      check1: "Salvamento automático e gestão de rascunhos",
+      check2: "Biblioteca pessoal de redações"
+    },
+    ai: {
+      title: "Análise Potencializada por IA",
+      desc: "Obtenha feedback instantâneo e detalhado sobre gramática, estilo, clareza e estrutura. Entenda seus pontos fortes e onde melhorar.",
+      check1: "Correções de gramática e estilo",
+      check2: "Pontuação com rubrica personalizada"
+    },
+    explore: {
+      title: "Explore Recursos",
+      desc: "Navegue por uma biblioteca comunitária de tópicos, modelos, citações e rubricas de avaliação para impulsionar sua escrita.",
+      check1: "Tópicos e sugestões de redação",
+      check2: "Modelos de preenchimento de lacunas"
+    },
+    community: {
+      title: "Comunidade e Revisão por Pares",
+      desc: "Compartilhe suas redações com uma comunidade solidária. Dê e receba feedback, curta seus favoritos e cresçam juntos.",
+      check1: "Correções e sugestões de colegas",
+      check2: "Engajamento da comunidade com curtidas"
+    }
+  },
+  how_it_works: {
+    title: "Como Funciona",
+    subtitle: "Três passos simples para escrever melhor",
+    step1_title: "Escreva Sua Redação",
+    step1_desc: "Use o editor ou comece a partir de um modelo. Escolha um tópico na página Explorar para se inspirar.",
+    step2_title: "Receba Feedback da IA",
+    step2_desc: "Envie sua redação para análise. Receba correções detalhadas com notas baseadas na rubrica escolhida.",
+    step3_title: "Compartilhe e Melhore",
+    step3_desc: "Publique para a comunidade, receba avaliações de pares e refine sua escrita a cada iteração."
+  },
+  cta_section: {
+    title: "Pronto para Escrever Sua Melhor Redação?",
+    desc: "Junte-se a uma comunidade de escritores que estão melhorando sua técnica com feedback de IA e colaboração entre pares.",
+    btn: "Comece Agora"
+  },
+  footer: {
+    tagline: "Escreva melhor. Escreva juntos."
   }
 }
 }
