@@ -9,19 +9,22 @@ import {
 
 export class ExploreMemStore implements IExploreStore {
   private items: Map<string, ExploreItem> = new Map();
-  
-  private likes: Map<string, Set<string>> = new Map();
-  
+  private likes: Map<string, Set<string>> = new Map(); 
   private saves: Map<string, Set<string>> = new Map();
 
   private currentId = 1;
 
-  constructor() {
-  }
+  constructor() {}
 
   // --- Itens ---
 
-  async getItems(type?: ExploreContentType, authorId?: string): Promise<ExploreItem[]> {
+  async getItems(
+    type?: ExploreContentType, 
+    authorId?: string,
+    limit: number = 20,
+    cursor?: string,
+    searchQuery?: string
+  ): Promise<{ items: ExploreItem[]; nextCursor: string | null }> {
     let allItems = Array.from(this.items.values());
 
     if (type) {
@@ -32,11 +35,35 @@ export class ExploreMemStore implements IExploreStore {
       allItems = allItems.filter(item => item.authorId === authorId);
     }
 
-    return allItems.sort((a, b) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      allItems = allItems.filter(item => 
+        item.title.toLowerCase().includes(q) || 
+        (item.subtitle && item.subtitle.toLowerCase().includes(q))
+      );
+    }
+
+    allItems.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
+
+    if (cursor) {
+      const cursorDate = new Date(cursor).getTime();
+      if (!isNaN(cursorDate)) {
+        allItems = allItems.filter(item => new Date(item.createdAt).getTime() < cursorDate);
+      }
+    }
+
+    const hasMore = allItems.length > limit;
+    const paginatedItems = allItems.slice(0, limit);
+    
+    const nextCursor = hasMore && paginatedItems.length > 0
+      ? paginatedItems[paginatedItems.length - 1].createdAt.toISOString()
+      : null;
+
+    return { items: paginatedItems, nextCursor };
   }
 
   async getItemsByIds(ids: string[]): Promise<ExploreItem[]> {
@@ -58,15 +85,16 @@ export class ExploreMemStore implements IExploreStore {
 
   async createItem(insertItem: InsertExploreItem): Promise<ExploreItem> {
     const id = (this.currentId++).toString();
+    
     const newItem: ExploreItem = {
       ...insertItem,
       id,
-      createdAt: new Date(), 
+      createdAt: new Date(),
       likesCount: 0,
       savesCount: 0,
-      description: insertItem.description || null,
-      imageUrl: insertItem.imageUrl || null,
-      metadata: insertItem.metadata || null
+      subtitle: insertItem.subtitle || null,
+      essayType: insertItem.essayType || null,
+      isFeatured: false,
     };
 
     this.items.set(id, newItem);
@@ -159,5 +187,16 @@ export class ExploreMemStore implements IExploreStore {
     if (itemSaves) {
       itemSaves.delete(userId);
     }
+  }
+
+  async getUserSavesForItems(userId: string, itemIds: string[]): Promise<Set<string>> {
+    const result = new Set<string>();
+    for (const itemId of itemIds) {
+      const itemSaves = this.saves.get(itemId);
+      if (itemSaves && itemSaves.has(userId)) {
+        result.add(itemId);
+      }
+    }
+    return result;
   }
 }

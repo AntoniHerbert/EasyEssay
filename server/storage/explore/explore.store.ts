@@ -2,7 +2,14 @@ import { type Tx } from "../types";
 import { type ExploreItem, type InsertExploreItem, type ExploreContentType, type ExploreSave } from "@shared/schema";
 
 export interface IExploreStore {
-  getItems(type?: ExploreContentType, authorId?: string): Promise<ExploreItem[]>;
+  getItems(
+    type?: ExploreContentType, 
+    authorId?: string, 
+    limit?: number, 
+    cursor?: string, 
+    searchQuery?: string
+  ): Promise<{ items: ExploreItem[]; nextCursor: string | null }>;
+
   getItemsByIds(ids: string[]): Promise<ExploreItem[]>;
   getItem(id: string): Promise<ExploreItem | undefined>;
   createItem(item: InsertExploreItem): Promise<ExploreItem>;
@@ -16,6 +23,7 @@ export interface IExploreStore {
   removeLike(itemId: string, userId: string, tx?: Tx): Promise<void>;
 
   getUserSaves(userId: string): Promise<ExploreSave[]>;
+  getUserSavesForItems(userId: string, itemIds: string[]): Promise<Set<string>>;
   hasSaved(itemId: string, userId: string): Promise<boolean>;
   addSave(itemId: string, userId: string, tx?: Tx): Promise<void>;
   removeSave(itemId: string, userId: string, tx?: Tx): Promise<void>;

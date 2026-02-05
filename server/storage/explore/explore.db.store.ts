@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, lt, or } from "drizzle-orm";
 import { type Tx } from "../types";
 import { type IExploreStore } from "./explore.store";
 import { 
@@ -14,17 +14,51 @@ import {
 export class ExploreDbStore implements IExploreStore {
   constructor(private db: any) {}
 
-  async getItems(type?: ExploreContentType, authorId?: string): Promise<ExploreItem[]> {
+  async getItems(
+    type?: ExploreContentType, 
+    authorId?: string, 
+    limit: number = 20, 
+    cursor?: string, 
+    searchQuery?: string
+  ): Promise<{ items: ExploreItem[]; nextCursor: string | null }> {
     const conditions = [];
+
     if (type) conditions.push(eq(exploreItems.type, type));
     if (authorId) conditions.push(eq(exploreItems.authorId, authorId));
     
-    return await this.db
+    if (cursor) {
+      const dateCursor = new Date(cursor);
+      if (!isNaN(dateCursor.getTime())) {
+        conditions.push(lt(exploreItems.createdAt, dateCursor));
+      }
+    }
+
+    if (searchQuery) {
+      const searchPattern = `%${searchQuery}%`;
+      conditions.push(
+        or(
+          sql`${exploreItems.title} ILIKE ${searchPattern}`,
+          sql`${exploreItems.subtitle} ILIKE ${searchPattern}`
+        )
+      );
+    }
+    
+    const result = await this.db
       .select()
       .from(exploreItems)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(exploreItems.createdAt));
+      .orderBy(desc(exploreItems.createdAt))
+      .limit(limit + 1);
+
+    const hasMore = result.length > limit;
+    const items = hasMore ? result.slice(0, limit) : result;
+    const nextCursor = hasMore && items.length > 0 
+      ? items[items.length - 1].createdAt.toISOString() 
+      : null;
+
+    return { items, nextCursor };
   }
+
 
   async getItemsByIds(ids: string[]): Promise<ExploreItem[]> {
     if (ids.length === 0) return [];
@@ -43,6 +77,18 @@ export class ExploreDbStore implements IExploreStore {
     return item;
   }
 
+  async getUserSavesForItems(userId: string, itemIds: string[]): Promise<Set<string>> {
+    if (itemIds.length === 0) return new Set();
+    const result = await this.db
+      .select({ exploreItemId: exploreSaves.exploreItemId })
+      .from(exploreSaves)
+      .where(and(
+        eq(exploreSaves.userId, userId),
+        inArray(exploreSaves.exploreItemId, itemIds)
+      ));
+    return new Set(result.map((r: any) => r.exploreItemId));
+  }
+
   async createItem(item: InsertExploreItem): Promise<ExploreItem> {
     const [newItem] = await this.db.insert(exploreItems).values(item).returning();
     return newItem;
@@ -54,7 +100,6 @@ export class ExploreDbStore implements IExploreStore {
 
   async updateCounts(itemId: string, likesDelta: number, savesDelta: number, tx?: Tx): Promise<void> {
     const db = (tx || this.db) as any;
-    // Uso de sql`` garante atomicidade no banco de dados
     await db.update(exploreItems)
       .set({ 
         likesCount: sql`${exploreItems.likesCount} + ${likesDelta}`,

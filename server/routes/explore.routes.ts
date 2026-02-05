@@ -8,13 +8,20 @@ const router = Router();
 // GET /api/explore (Feed)
 router.get("/", async (req, res) => {
   try {
-    const { type, authorId } = req.query;
-    const items = await exploreService.getFeed(
+    const { type, authorId, limit, cursor, q } = req.query;
+    
+    const parsedLimit = limit ? parseInt(limit as string, 10) : 20;
+
+    const result = await exploreService.getFeed(
       req.session.userId,
       type as ExploreContentType | undefined,
-      authorId as string | undefined
+      authorId as string | undefined,
+      parsedLimit,
+      cursor as string | undefined,
+      q as string | undefined
     );
-    res.json(items);
+    
+    res.json(result);
   } catch (error) {
     console.error("Explore feed error:", error);
     res.status(500).json({ message: "Failed to fetch explore items" });
@@ -27,8 +34,10 @@ router.get("/saved", async (req, res) => {
   
   try {
     const items = await exploreService.getSavedItems(req.session.userId);
-    res.json(items);
+    
+    res.json({ items, nextCursor: null });
   } catch (error) {
+    console.error("Explore saved error:", error);
     res.status(500).json({ message: "Failed to fetch saved items" });
   }
 });
@@ -79,6 +88,8 @@ router.delete("/:id", async (req, res) => {
   } catch (error: any) {
     if (error.message === "Unauthorized") return res.status(403).json({ message: error.message });
     if (error.message === "Item not found") return res.status(404).json({ message: error.message });
+    
+    console.error("Delete explore item error:", error);
     res.status(500).json({ message: "Failed to delete item" });
   }
 });
@@ -94,6 +105,7 @@ router.post("/:id/like", async (req, res) => {
     const isLiked = await exploreService.toggleLike(req.params.id, req.session.userId);
     res.json({ isLiked });
   } catch (error) {
+    console.error("Like error:", error);
     res.status(500).json({ message: "Failed to toggle like" });
   }
 });
@@ -109,6 +121,7 @@ router.post("/:id/save", async (req, res) => {
     const isSaved = await exploreService.toggleSave(req.params.id, req.session.userId);
     res.json({ isSaved });
   } catch (error) {
+    console.error("Save error:", error);
     res.status(500).json({ message: "Failed to toggle save" });
   }
 });
