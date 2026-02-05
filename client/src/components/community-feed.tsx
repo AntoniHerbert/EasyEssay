@@ -13,12 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { type Essay, type Community, type CommunityMember, type CommunityTopic, type TopicSubmission } from "@shared/schema";
+import { type Essay, type Community, type CommunityMember, type CommunityTopic, type TopicSubmission, type JoinRequest } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Bookmark, Users, Clock, BookOpen, UserPlus, User, Plus, Crown, LogOut, FileText, Calendar, ChevronRight, ArrowLeft, Search, Copy, Check, Lock, Globe, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Users, Clock, BookOpen, UserPlus, Plus, Crown, LogOut, FileText, Calendar, ChevronRight, ArrowLeft, Search, Copy, Check, Lock, Globe, UserCheck, UserX, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { type JoinRequest } from "@shared/schema";
 import { useAuth } from "@/contexts/auth-context";
 
 interface CommunityWithMembership extends Community {
@@ -31,30 +30,35 @@ interface CommunityPage {
   nextCursor: string | null;
 }
 
+interface EssayPage {
+  data: Essay[];
+  nextCursor: string | null;
+}
+
 export function CommunityFeed() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
-  
+   
   const [activeTab, setActiveTab] = useState("essays");
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [selectedTopicView, setSelectedTopicView] = useState<CommunityTopic | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createTopicDialogOpen, setCreateTopicDialogOpen] = useState(false);
-  
+   
   const [newCommunityName, setNewCommunityName] = useState("");
   const [newCommunityDescription, setNewCommunityDescription] = useState("");
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicDeadline, setNewTopicDeadline] = useState("");
   const [newCommunityIsPublic, setNewCommunityIsPublic] = useState(true);
-  
+   
   const [communitySearch, setCommunitySearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(""); 
   const [communityFilter, setCommunityFilter] = useState<'all' | 'member'>('all');
-  
+   
   const [codeCopied, setCodeCopied] = useState(false);
   const [transferLeadershipDialogOpen, setTransferLeadershipDialogOpen] = useState(false);
   const [selectedNewLeader, setSelectedNewLeader] = useState<string | null>(null);
@@ -69,15 +73,35 @@ export function CommunityFeed() {
     return () => clearTimeout(timer);
   }, [communitySearch]);
 
-  const { data: essays = [], isLoading } = useQuery({
-    queryKey: ["/api/essays?isPublic=true"],
+  const { 
+    data: essaysData, 
+    fetchNextPage: fetchNextEssays, 
+    hasNextPage: hasNextEssays, 
+    isFetchingNextPage: isFetchingNextEssays, 
+    isLoading: essaysLoading 
+  } = useInfiniteQuery<EssayPage>({
+    queryKey: ["/api/essays", "public", selectedTopic, sortBy],
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.append("isPublic", "true");
+      if (pageParam) params.append("cursor", pageParam as string);
+      
+      const res = await apiRequest("GET", `/api/essays?${params.toString()}`);
+      return res.json();
+    },
   });
+
+  const allEssays = useMemo(() => {
+    return essaysData?.pages.flatMap((page) => page.data) || [];
+  }, [essaysData]);
 
   const { 
     data: communitiesData, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage, 
+    fetchNextPage: fetchNextCommunities, 
+    hasNextPage: hasNextCommunities, 
+    isFetchingNextPage: isFetchingNextCommunities, 
     isLoading: communitiesLoading 
   } = useInfiniteQuery<CommunityPage>({
     queryKey: ["/api/communities", communityFilter, debouncedSearch],
@@ -153,19 +177,6 @@ export function CommunityFeed() {
     },
     onError: () => {
       toast({ title: t('community_feed.toast.topic_failed'), description: t('community_feed.toast.topic_failed_desc'), variant: "destructive" });
-    },
-  });
-
-  const reviewSubmissionMutation = useMutation({
-    mutationFn: async (submissionId: string) => {
-      return apiRequest("PATCH", `/api/submissions/${submissionId}/review`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/topics", selectedTopicView?.id, "submissions"] });
-      toast({ title: t('community_feed.toast.reviewed'), description: t('community_feed.toast.reviewed_desc') });
-    },
-    onError: () => {
-      toast({ title: t('community_feed.toast.review_failed'), description: t('community_feed.toast.review_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -352,7 +363,7 @@ export function CommunityFeed() {
   };
 
   const renderEssaysFeed = () => {
-    if (isLoading) {
+    if (essaysLoading && !allEssays.length) {
       return (
         <div className="space-y-6">
           {[1, 2, 3].map((i) => (
@@ -407,7 +418,7 @@ export function CommunityFeed() {
           </div>
         </div>
 
-        {(essays as Essay[]).length === 0 ? (
+        {allEssays.length === 0 && !essaysLoading ? (
           <Card>
             <CardContent className="p-12 text-center">
               <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -419,12 +430,11 @@ export function CommunityFeed() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {(essays as Essay[])
+            {allEssays
               .filter(essay => essay.authorId !== user?.id)
               .map((essay: Essay) => {
               const topic = getTopicBadge(essay.title, essay.content);
               const readingTime = getReadingTime(essay.wordCount);
-              const accuracyScore = getAccuracyScore();
               
               return (
                 <Card key={essay.id} className="hover:shadow-md transition-shadow" data-testid={`community-essay-${essay.id}`}>
@@ -523,11 +533,26 @@ export function CommunityFeed() {
               );
             })}
             
-            <div className="text-center">
-              <Button variant="secondary" size="lg" data-testid="button-load-more">
-                {t('community_feed.essays.load_more')}
-              </Button>
-            </div>
+            {/* Load More Button for Essays */}
+            {hasNextEssays && (
+              <div className="flex justify-center mt-8 pb-8">
+                <Button 
+                  variant="outline" 
+                  onClick={() => fetchNextEssays()} 
+                  disabled={isFetchingNextEssays}
+                  className="w-full sm:w-auto min-w-[150px]"
+                >
+                  {isFetchingNextEssays ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('library.loading_more', 'Loading more...')}
+                    </>
+                  ) : (
+                    t('library.load_more', 'Load More')
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -765,16 +790,16 @@ export function CommunityFeed() {
               );
             })}
 
-            {/* Load More Button */}
-            {hasNextPage && (
+            {/* Load More Button for Communities */}
+            {hasNextCommunities && (
               <div className="flex justify-center mt-8 pb-8">
                 <Button 
                   variant="outline" 
-                  onClick={() => fetchNextPage()} 
-                  disabled={isFetchingNextPage}
+                  onClick={() => fetchNextCommunities()} 
+                  disabled={isFetchingNextCommunities}
                   className="w-full sm:w-auto min-w-[150px]"
                 >
-                  {isFetchingNextPage ? (
+                  {isFetchingNextCommunities ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {t('library.loading_more', 'Loading more...')}
@@ -1291,7 +1316,6 @@ export function CommunityFeed() {
                 return (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Stats Cards */}
                       <div className="bg-muted/50 rounded-lg p-4">
                         <p className="text-sm text-muted-foreground mb-1">{t('community_feed.topic.stats.submission_rate')}</p>
                         <div className="flex items-center gap-3">
