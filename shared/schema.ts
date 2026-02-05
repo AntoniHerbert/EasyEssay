@@ -3,7 +3,32 @@ import { pgTable, text, varchar, boolean, timestamp, jsonb, integer, pgEnum, ind
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Essay Types
+export const ESSAY_TYPES = [
+  'argumentative',
+  'narrative',
+  'descriptive',
+  'expository',
+  'persuasive',
+  'compare_contrast',
+  'analytical',
+  'reflective',
+] as const;
 
+export type EssayType = typeof ESSAY_TYPES[number];
+
+export const essayTypeLabels: Record<EssayType, string> = {
+  argumentative: 'Argumentative',
+  narrative: 'Narrative',
+  descriptive: 'Descriptive',
+  expository: 'Expository',
+  persuasive: 'Persuasive',
+  compare_contrast: 'Compare & Contrast',
+  analytical: 'Analytical',
+  reflective: 'Reflective',
+};
+
+// Users table for authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username", { length: 50 }).notNull().unique(),

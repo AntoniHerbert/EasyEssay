@@ -1,26 +1,25 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod";
-import { type CorrectionObject } from "@shared/schema";
+import { type CorrectionObject, type RubricCategory } from "@shared/schema";
 
 const openai = new OpenAI();
 
-const AiCorrectionSchema = z.object({
-  category: z.enum(['grammar', 'style', 'clarity', 'structure', 'content', 'research']),
-  exactQuote: z.string(),
-  comment: z.string(),
+const CategoryScoreSchema = z.object({
+  categoryName: z.string(),
+  score: z.number(),
 });
 
 const AiResponseSchema = z.object({
-  grammarScore: z.number(),
-  styleScore: z.number(),
-  clarityScore: z.number(),
-  structureScore: z.number(),
-  contentScore: z.number(),
-  researchScore: z.number(),
+  scores: z.array(CategoryScoreSchema),
+  
   isOffensive: z.boolean().describe("True if the essay contains hate speech, explicit violence, sexual content, or severe harassment."),
   offenseReason: z.string().nullable().optional().describe("If offensive, a brief explanation in Portuguese."),
-  corrections: z.array(AiCorrectionSchema),
+  
+  corrections: z.array(z.object({
+    category: z.string(), 
+    exactQuote: z.string(),
+    comment: z.string(),
+  })),
 });
 
 export interface AIReviewResult {
@@ -32,66 +31,86 @@ export interface AIReviewResult {
   researchScore: number;
   overallScore: number;
 
+  rubricScores: { categoryName: string; score: number; maxScore: number }[] | null;
+
   isOffensive: boolean;
   offenseReason?: string;
-
   corrections: CorrectionObject[];
-  rubricScores?: any;
 }
 
 /**
- * Analisa uma redação usando GPT-4o com Saídas Estruturadas.
+ * Analisa uma redação usando GPT-4o com Contexto de Gênero e Rúbrica Dinâmica.
  */
-export async function analyzeEssayWithOpenAI(title: string, content: string, rubric?: any): Promise<AIReviewResult> {
+export async function analyzeEssayWithOpenAI(
+  title: string, 
+  content: string, 
+  rubric?: RubricCategory[],
+  essayType?: string
+): Promise<AIReviewResult> {
 
-  const model = process.env.AI_MODEL || "llama-3.3-70b-versatile";
+  const model = process.env.AI_MODEL || "gpt-4o";
+  const hasCustomRubric = rubric && rubric.length > 0;
+  const currentGenre = essayType || "argumentative";
 
-  try{
-  
+  let rubricInstructions = "";
+  let categoriesList: string[] = [];
+
+  if (hasCustomRubric) {
+    rubricInstructions = "Evaluate based strictly on these CUSTOM categories:\n";
+    rubric!.forEach(cat => {
+      rubricInstructions += `- "${cat.name}" (Max ${cat.maxScore} pts): ${cat.description}\n`;
+      categoriesList.push(cat.name);
+    });
+  } else {
+    rubricInstructions = `Evaluate based on these STANDARD categories (Max 200 pts each):
+    - grammar (Grammar & Mechanics)
+    - style (Style & Voice)
+    - clarity (Clarity & Flow)
+    - structure (Structure & Organization)
+    - content (Content & Ideas)
+    - research (Research & Evidence)`;
+    categoriesList = ['grammar', 'style', 'clarity', 'structure', 'content', 'research'];
+  }
+
+  try {
     const completion = await openai.chat.completions.create({
-
-      
       model: model,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `You are an expert academic writing tutor. Analyze the essay and provide structured feedback in JSON format.
+          content: `You are an expert writing tutor analyzing a(n) "${currentGenre}" essay.
+
+          ADAPT YOUR FEEDBACK TO THE GENRE:
+          - If "narrative" or "descriptive": Focus on imagery, storytelling, character development, and emotional impact.
+          - If "argumentative" or "persuasive": Focus on thesis statement, logic, evidence, and rhetoric.
+          - If "analytical" or "expository": Focus on clarity, objectivity, and depth of analysis.
+          - If "reflective": Focus on personal insight and connection.
 
           LANGUAGE INSTRUCTIONS:
           - **All comments and feedback text MUST be in Portuguese (Português do Brasil).**
-          - **JSON Keys and Category values (e.g., 'grammar', 'style') MUST remain in English.**
-  
-          MODERATION GUIDE (CRITICAL):
-          - Check for: Hate speech, racism, severe profanity, explicit sexual content, promotion of self-harm or violence.
-          - If found, set "isOffensive" to true and provide "offenseReason".
-          - If the text is just poorly written or controversial but academic, it is NOT offensive.
+          - **JSON Keys and Category Names MUST remain in English (matching the rubric provided).**
 
-          Scoring Guide:
-          - Evaluate 6 categories: grammar, style, clarity, structure, content, research.
-          - **Assign a score from 0 to 200 for EACH category.**
-          - Be rigorous but fair.
-          
-          Corrections Guide:
-          - Identify specific issues in the text.
-          - **Focus on the most impactful errors (Quality over Quantity).**
-          - **Do not list every single typo if there are many; group them or highlight the major ones.**
-          - **Aim for 3 to 10 high-quality corrections.** (This is a guideline, not a strict rule)
-          - For 'exactQuote', perform a copy-paste of the text segment you are referring to. It must match the user text exactly.
+          MODERATION GUIDE:
+          - Check for hate speech, explicit violence, etc. Set "isOffensive" to true if found.
 
-          Output JSON Schema:
+          SCORING GUIDE:
+          ${rubricInstructions}
+
+          CORRECTIONS GUIDE:
+          - Identify specific issues relevant to the "${currentGenre}" genre.
+          - "category" field in corrections must match one of: ${categoriesList.join(', ')}.
+          - For 'exactQuote', copy the text exactly from the user input.
+
+          OUTPUT JSON FORMAT:
           {
-            "grammarScore": number,
-            "styleScore": number,
-            "clarityScore": number,
-            "structureScore": number,
-            "contentScore": number,
-            "researchScore": number,
+            "scores": [
+              { "categoryName": "string (must match rubric)", "score": number }
+            ],
             "isOffensive": boolean,
             "offenseReason": string | null,
-            "overallScore": number,
             "corrections": [
-              { "category": "grammar"|"style"|"clarity"|"structure"|"content"|"research", "exactQuote": "string", "comment": "string (IN PORTUGUESE)" }
+              { "category": "string", "exactQuote": "string", "comment": "string" }
             ]
           }`
         },
@@ -103,49 +122,81 @@ export async function analyzeEssayWithOpenAI(title: string, content: string, rub
       temperature: 0.2,
     });
 
-  const responseContent = completion.choices[0].message.content;
+    const responseContent = completion.choices[0].message.content;
+    if (!responseContent) throw new Error("IA retornou resposta vazia");
 
-  if (!responseContent) {
-    throw new Error("IA retornou resposta vazia");
-  }
+    const rawJson = JSON.parse(responseContent);
+    const aiResponse = AiResponseSchema.parse(rawJson);
 
-  const rawJson = JSON.parse(responseContent);
+    let result: AIReviewResult = {
+      grammarScore: 0, styleScore: 0, clarityScore: 0, 
+      structureScore: 0, contentScore: 0, researchScore: 0,
+      overallScore: 0,
+      rubricScores: null,
+      isOffensive: aiResponse.isOffensive,
+      offenseReason: aiResponse.offenseReason || undefined,
+      corrections: []
+    };
 
-  const aiResponse = AiResponseSchema.parse(rawJson);
+    let totalScore = 0;
 
-  const calculatedOverallScore = 
-      aiResponse.grammarScore + 
-      aiResponse.styleScore + 
-      aiResponse.clarityScore + 
-      aiResponse.structureScore + 
-      aiResponse.contentScore + 
-      aiResponse.researchScore;
+    if (hasCustomRubric) {
+      result.rubricScores = aiResponse.scores.map(s => {
+        const def = rubric!.find(r => r.name.toLowerCase() === s.categoryName.toLowerCase());
+        const maxScore = def ? def.maxScore : 200;
+        
+        const safeScore = Math.min(Math.max(0, s.score), maxScore);
 
-    const finalCorrections: CorrectionObject[] = aiResponse.corrections.map(c => {
-    const startIndex = content.indexOf(c.exactQuote);
-    
-    if (startIndex === -1) {
-      console.warn(`[Grog] Could not find quote: "${c.exactQuote}"`);
-      return null;
+        return {
+          categoryName: s.categoryName, 
+          score: safeScore,
+          maxScore: maxScore
+        };
+      });
+      totalScore = result.rubricScores.reduce((acc, curr) => acc + curr.score, 0);
+    } else {
+      const scoreMap: Record<string, number> = {};
+      const STANDARD_MAX = 200;
+
+      aiResponse.scores.forEach(s => {
+        const key = s.categoryName.toLowerCase().split(' ')[0]; 
+        const safeScore = Math.min(Math.max(0, s.score), STANDARD_MAX);
+        
+        scoreMap[key] = safeScore;
+        totalScore += safeScore;
+      });
+
+      result.grammarScore = scoreMap['grammar'] || 0;
+      result.styleScore = scoreMap['style'] || 0;
+      result.clarityScore = scoreMap['clarity'] || 0;
+      result.structureScore = scoreMap['structure'] || 0;
+      result.contentScore = scoreMap['content'] || 0;
+      result.researchScore = scoreMap['research'] || 0;
     }
 
-    return {
-      category: c.category,
-      selectedText: c.exactQuote,
-      textStartIndex: startIndex,
-      textEndIndex: startIndex + c.exactQuote.length,
-      comment: c.comment,
-    };
-  }).filter((c): c is CorrectionObject => c !== null);
+    result.overallScore = aiResponse.isOffensive ? 0 : totalScore;
 
-  return {
-    ...aiResponse,
-    overallScore: aiResponse.isOffensive ? 0 : calculatedOverallScore,
-    corrections: finalCorrections,
-    offenseReason: aiResponse.offenseReason
-  };
-} catch (error) {
-    console.error("Erro na chamada da Groq:", error);
+    result.corrections = aiResponse.corrections.map(c => {
+        const startIndex = content.indexOf(c.exactQuote);
+        
+        if (startIndex === -1) {
+          console.warn(`[OpenAI] Could not find exact quote: "${c.exactQuote}"`);
+          return null;
+        }
+
+        return {
+            category: c.category as any,
+            selectedText: c.exactQuote,
+            textStartIndex: startIndex,
+            textEndIndex: startIndex + c.exactQuote.length,
+            comment: c.comment
+        };
+    }).filter((c): c is CorrectionObject => c !== null);
+
+    return result;
+
+  } catch (error) {
+    console.error("Erro na chamada da IA:", error);
     throw new Error("Falha ao analisar redação com IA");
   }
 }

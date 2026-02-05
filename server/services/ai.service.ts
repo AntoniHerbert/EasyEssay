@@ -24,7 +24,8 @@ export class AiService {
         essay.id, 
         essay.title, 
         essay.content, 
-        essay.rubric || undefined
+        essay.rubric || undefined,
+        essay.rubricName || "argumentative" 
     );
     
     return await this.peerReviewStore.getPeerReview(essay.id, "AI");
@@ -49,7 +50,8 @@ export class AiService {
             essay.id, 
             essay.title, 
             essay.content,
-            essay.rubric || undefined
+            essay.rubric || undefined,
+            essay.rubricName || "argumentative"
         );
         stats.success++;
       } catch (error) {
@@ -68,9 +70,10 @@ export class AiService {
       essayId: string, 
       title: string, 
       content: string, 
-      rubric?: RubricCategory[]
+      rubric?: RubricCategory[],
+      essayType?: string
   ) {
-    const aiReview = await this.fetchReviewData(title, content, rubric);
+    const aiReview = await this.fetchReviewData(title, content, rubric, essayType);
     
     console.log(`[AiService] Analysis result for ${essayId}: Offensive=${aiReview.isOffensive}`);
 
@@ -115,13 +118,18 @@ export class AiService {
   /**
    * Auxiliar: Decide se usa IA Real ou Mock.
    */
-  private async fetchReviewData(title: string, content: string, rubric?: RubricCategory[]): Promise<AIReviewResult> {
+  private async fetchReviewData(
+    title: string, 
+    content: string, 
+    rubric?: RubricCategory[], 
+    essayType?: string
+  ): Promise<AIReviewResult> {
     const useRealAi = process.env.NODE_ENV === 'production' || process.env.USE_REAL_AI === 'true';
 
     if (useRealAi) {
       try {
-        console.log(`[AiService] Calling OpenAI/Groq...`);
-        return await analyzeEssayWithOpenAI(title, content, rubric);
+        console.log(`[AiService] Calling OpenAI (${essayType})...`);
+        return await analyzeEssayWithOpenAI(title, content, rubric, essayType);
       } catch (error) {
         console.error("[AiService] AI API failed, falling back to mock:", error);
         return this.getMockData(title, content, rubric);
@@ -151,6 +159,9 @@ export class AiService {
       tx: any
   ) {
     const reviewData = {
+      essayId: essayId,
+      reviewerId: "AI",
+      
       grammarScore: aiReview.grammarScore,
       styleScore: aiReview.styleScore,
       clarityScore: aiReview.clarityScore,
@@ -171,11 +182,7 @@ export class AiService {
     if (existingReview) {
       await this.peerReviewStore.updatePeerReview(existingReview.id, reviewData, tx);
     } else {
-      await this.peerReviewStore.createPeerReview({
-        ...reviewData,
-        essayId: essayId,
-        reviewerId: "AI",
-      }, tx);
+      await this.peerReviewStore.createPeerReview(reviewData, tx);
     }
   }
 }
