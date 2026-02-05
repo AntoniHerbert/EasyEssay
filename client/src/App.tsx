@@ -11,6 +11,7 @@ import UserProfilePage from "@/pages/user-profile";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import NotFound from "@/pages/not-found";
+import Welcome from "./pages/welcome";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -29,6 +30,7 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
 function Router() {
   return (
     <Switch>
+      <Route path="/welcome" component={Welcome} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/">
