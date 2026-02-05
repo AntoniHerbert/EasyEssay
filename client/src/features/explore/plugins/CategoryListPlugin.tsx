@@ -1,16 +1,18 @@
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ListChecks, Heart, Bookmark, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { type CategoryListPayload, type CategoryItem, ESSAY_TYPES, essayTypeLabels, type EssayType } from "@shared/schema";
+import { type CategoryListPayload, type CategoryItem, ESSAY_TYPES, type EssayType } from "@shared/schema";
 import type { ExplorePlugin, CardProps, DetailProps, CreateFormProps, PluginUtils } from "../types";
 import type { ExploreItem } from "@shared/schema";
-import { useState, useEffect } from "react";
-import { Link } from "wouter";
 
 const colorClass = "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
 
@@ -25,8 +27,10 @@ const handleUseCategory = (item: ExploreItem, utils: Pick<PluginUtils, "navigate
     localStorage.setItem("selectedEssayType", item.essayType);
   }
   utils.toast({
-    title: "Rubric selected",
-    description: `Your essay will be scored on: ${payload.categories.map(c => c.name).join(", ")}`,
+    title: i18n.t('explore.toast.rubric_selected'),
+    description: i18n.t('explore.toast.rubric_desc', { 
+      categories: payload.categories.map(c => c.name).join(", ") 
+    }),
   });
   utils.navigate("/?section=write&t=" + Date.now());
 };
@@ -36,6 +40,7 @@ const getInitials = (name: string) => {
 };
 
 const CategoryListCard = ({ item, utils }: CardProps) => {
+  const { t } = useTranslation(); // <--- Hook
   const payload = item.payload as CategoryListPayload;
   const totalScore = payload.categories.reduce((sum, c) => sum + c.maxScore, 0);
 
@@ -49,15 +54,15 @@ const CategoryListCard = ({ item, utils }: CardProps) => {
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={colorClass}>
               <ListChecks className="w-3 h-3 mr-1" />
-              Categories
+              {t('explore.types.category_list')}
             </Badge>
             {item.essayType && (
               <Badge variant="outline" className="text-xs">
-                {essayTypeLabels[item.essayType as EssayType]}
+                {t(`editor.types.${item.essayType}`)}
               </Badge>
             )}
           </div>
-          {item.isFeatured && <Badge variant="secondary">Featured</Badge>}
+          {item.isFeatured && <Badge variant="secondary">{t('explore.card.featured')}</Badge>}
         </div>
         <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
         {item.subtitle && <p className="text-sm text-muted-foreground mb-3">{item.subtitle}</p>}
@@ -66,11 +71,13 @@ const CategoryListCard = ({ item, utils }: CardProps) => {
             <span key={i} className="text-xs bg-muted px-2 py-1 rounded">{cat.name}</span>
           ))}
           {payload.categories.length > 4 && (
-            <span className="text-xs text-muted-foreground">+{payload.categories.length - 4} more</span>
+            <span className="text-xs text-muted-foreground">
+              {t('explore.card.more', { count: payload.categories.length - 4 })}
+            </span>
           )}
         </div>
         <div className="text-sm text-muted-foreground mb-3">
-          Total: {totalScore} points
+          {t('explore.card.total_points', { score: totalScore })}
         </div>
         <div className="flex items-center justify-between border-t border-border pt-3">
           {item.authorId && item.authorName ? (
@@ -117,6 +124,7 @@ const CategoryListCard = ({ item, utils }: CardProps) => {
 };
 
 const CategoryListDetail = ({ item, utils, isOwner }: DetailProps) => {
+  const { t } = useTranslation();
   const payload = item.payload as CategoryListPayload;
 
   return (
@@ -124,15 +132,15 @@ const CategoryListDetail = ({ item, utils, isOwner }: DetailProps) => {
       <div className="space-y-3">
         {item.essayType && (
           <div className="flex items-center gap-2 pb-2 border-b border-border">
-            <span className="text-sm text-muted-foreground">Essay Type:</span>
-            <Badge variant="outline">{essayTypeLabels[item.essayType as EssayType]}</Badge>
+            <span className="text-sm text-muted-foreground">{t('explore.create.labels.essay_type_optional').replace('(Optional)', '').trim()}:</span>
+            <Badge variant="outline">{t(`editor.types.${item.essayType}`)}</Badge>
           </div>
         )}
         <div className="space-y-2">
           {payload.categories.map((cat, i) => (
             <div key={i} className="flex justify-between items-center p-3 bg-muted rounded-lg">
               <span className="font-medium">{cat.name}</span>
-              <span className="text-sm text-muted-foreground">Max: {cat.maxScore} points</span>
+              <span className="text-sm text-muted-foreground">{t('explore.detail.max_score', { score: cat.maxScore })}</span>
             </div>
           ))}
         </div>
@@ -162,7 +170,7 @@ const CategoryListDetail = ({ item, utils, isOwner }: DetailProps) => {
               data-testid="btn-delete-item"
             >
               <Trash2 className="w-4 h-4 mr-1" />
-              Delete
+              {t('explore.detail.delete')}
             </Button>
           )}
         </div>
@@ -171,7 +179,7 @@ const CategoryListDetail = ({ item, utils, isOwner }: DetailProps) => {
           data-testid="btn-use-item"
         >
           <ChevronRight className="w-4 h-4 mr-1" />
-          Use This
+          {t('explore.detail.use_this')}
         </Button>
       </div>
     </div>
@@ -179,6 +187,7 @@ const CategoryListDetail = ({ item, utils, isOwner }: DetailProps) => {
 };
 
 const CategoryListForm = ({ onChange, initialData }: CreateFormProps) => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<CategoryItem[]>(
     initialData?.categories || [{ name: "", maxScore: 100 }]
   );
@@ -199,33 +208,33 @@ const CategoryListForm = ({ onChange, initialData }: CreateFormProps) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Essay Type (Optional)</Label>
+        <Label>{t('explore.create.labels.essay_type_optional')}</Label>
         <Select value={essayType} onValueChange={(v) => setEssayType(v as EssayType)}>
           <SelectTrigger>
-            <SelectValue placeholder="Select essay type for this rubric" />
+            <SelectValue placeholder={t('explore.create.placeholders.select_essay_type_rubric')} />
           </SelectTrigger>
           <SelectContent>
             {ESSAY_TYPES.map((type) => (
               <SelectItem key={type} value={type}>
-                {essayTypeLabels[type]}
+                {t(`editor.types.${type}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>Scoring Categories</Label>
+        <Label>{t('explore.create.labels.scoring_categories')}</Label>
         {categories.map((cat, index) => (
           <div key={index} className="flex gap-2 items-center">
             <Input
-              placeholder="Category name"
+              placeholder={t('explore.create.placeholders.category_name')}
               value={cat.name}
               onChange={(e) => updateCategory(index, "name", e.target.value)}
               className="flex-1"
             />
             <Input
               type="number"
-              placeholder="Max"
+              placeholder={t('explore.create.placeholders.score')}
               value={cat.maxScore}
               onChange={(e) => updateCategory(index, "maxScore", parseInt(e.target.value) || 0)}
               className="w-20"
@@ -238,7 +247,7 @@ const CategoryListForm = ({ onChange, initialData }: CreateFormProps) => {
           </div>
         ))}
         <Button variant="outline" size="sm" onClick={addCategory}>
-          <Plus className="w-4 h-4 mr-1" /> Add Category
+          <Plus className="w-4 h-4 mr-1" /> {t('explore.create.add_category')}
         </Button>
       </div>
     </div>

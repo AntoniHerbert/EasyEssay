@@ -1,15 +1,17 @@
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Quote, Heart, Bookmark, Copy, Trash2 } from "lucide-react";
 import { type QuotePayload } from "@shared/schema";
 import type { ExplorePlugin, CardProps, DetailProps, CreateFormProps, PluginUtils } from "../types";
 import type { ExploreItem } from "@shared/schema";
-import { useState, useEffect } from "react";
-import { Link } from "wouter";
 
 const colorClass = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
 
@@ -17,9 +19,10 @@ const handleUseQuote = (item: ExploreItem, utils: Pick<PluginUtils, "navigate" |
   const payload = item.payload as QuotePayload;
   const quoteText = `"${item.title}" — ${payload.author}${payload.source ? ` (${payload.source})` : ""}`;
   navigator.clipboard.writeText(quoteText);
+  
   utils.toast({
-    title: "Copied!",
-    description: "Quote copied to clipboard.",
+    title: i18n.t('explore.toast.copied'),
+    description: i18n.t('explore.toast.copied_desc'),
   });
 };
 
@@ -28,6 +31,7 @@ const getInitials = (name: string) => {
 };
 
 const QuoteCard = ({ item, utils }: CardProps) => {
+  const { t } = useTranslation();
   const payload = item.payload as QuotePayload;
 
   return (
@@ -39,9 +43,9 @@ const QuoteCard = ({ item, utils }: CardProps) => {
         <div className="flex items-start justify-between mb-3">
           <Badge className={colorClass}>
             <Quote className="w-3 h-3 mr-1" />
-            Quote
+            {t('explore.types.quote')}
           </Badge>
-          {item.isFeatured && <Badge variant="secondary">Featured</Badge>}
+          {item.isFeatured && <Badge variant="secondary">{t('explore.card.featured')}</Badge>}
         </div>
         <blockquote className="italic text-lg mb-2 border-l-4 border-muted-foreground/30 pl-4">
           "{item.title}"
@@ -95,6 +99,7 @@ const QuoteCard = ({ item, utils }: CardProps) => {
 };
 
 const QuoteDetail = ({ item, utils, isOwner }: DetailProps) => {
+  const { t } = useTranslation();
   const payload = item.payload as QuotePayload;
 
   return (
@@ -131,7 +136,7 @@ const QuoteDetail = ({ item, utils, isOwner }: DetailProps) => {
               data-testid="btn-delete-item"
             >
               <Trash2 className="w-4 h-4 mr-1" />
-              Delete
+              {t('explore.detail.delete')}
             </Button>
           )}
         </div>
@@ -140,7 +145,7 @@ const QuoteDetail = ({ item, utils, isOwner }: DetailProps) => {
           data-testid="btn-use-item"
         >
           <Copy className="w-4 h-4 mr-1" />
-          Copy Quote
+          {t('explore.card.copy')}
         </Button>
       </div>
     </div>
@@ -148,6 +153,7 @@ const QuoteDetail = ({ item, utils, isOwner }: DetailProps) => {
 };
 
 const QuoteForm = ({ onChange, initialData }: CreateFormProps) => {
+  const { t } = useTranslation();
   const [author, setAuthor] = useState(initialData?.author || "");
   const [source, setSource] = useState(initialData?.source || "");
 
@@ -158,17 +164,17 @@ const QuoteForm = ({ onChange, initialData }: CreateFormProps) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Author</Label>
+        <Label>{t('explore.create.labels.author')}</Label>
         <Input
-          placeholder="Who said this quote?"
+          placeholder={t('explore.create.placeholders.author')}
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
         />
       </div>
       <div className="space-y-2">
-        <Label>Source (Optional)</Label>
+        <Label>{t('explore.create.labels.source')}</Label>
         <Input
-          placeholder="Book, speech, interview..."
+          placeholder={t('explore.create.placeholders.source')}
           value={source}
           onChange={(e) => setSource(e.target.value)}
         />

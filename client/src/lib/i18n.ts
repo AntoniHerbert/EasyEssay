@@ -146,6 +146,10 @@ explore: {
     create_btn: "Create"
   },
   search_placeholder: "Search...",
+  
+  load_more: "Load More",
+  loading: "Loading...",
+
   filters: {
     all: "All",
     my_content: "My Content",
@@ -177,6 +181,7 @@ explore: {
   create: {
     title: "Create New Content",
     desc: "Add content for others to discover and use.",
+    template_help: "Use [brackets] for fill-in sections, e.g., \"The [topic] is important because [reason].\"",
     labels: {
       type: "Content Type",
       title: "Title",
@@ -186,7 +191,10 @@ explore: {
       author: "Author",
       source: "Source (optional)",
       template: "Template Content",
-      categories: "Categories"
+      categories: "Categories",
+      essay_type_optional: "Essay Type (Optional)",
+      scoring_categories: "Scoring Categories",
+      preview: "Preview:"
     },
     placeholders: {
       title: "Enter a title...",
@@ -197,7 +205,8 @@ explore: {
       source: "Book, speech, interview...",
       template: "Write your template. Use [PLACEHOLDER] for gaps users will fill in.",
       category_name: "Category name",
-      score: "Max"
+      score: "Max",
+      select_essay_type_rubric: "Select essay type for this rubric"
     },
     hint: "Tip: Use [BRACKETS] to mark areas users should fill in.",
     add_category: "Add Category",
@@ -211,6 +220,7 @@ explore: {
     desc_default: "Be the first to add content!",
     btn_create: "Create Content"
   },
+  
   toast: {
     created: "Created!",
     created_desc: "Your content has been added to Explore.",
@@ -220,12 +230,8 @@ explore: {
     deleted_desc: "Content removed.",
     copied: "Copied!",
     copied_desc: "Quote copied to clipboard.",
-    topic_loaded: "Topic loaded",
-    topic_loaded_desc: "Start writing your essay on this topic!",
-    template_loaded: "Template loaded",
-    template_loaded_desc: "Fill in the template to write your essay!",
-    rubric_selected: "Rubric selected",
-    rubric_desc: "Your essay will be scored on: {{categories}}"
+    incomplete: "Incomplete",
+    incomplete_desc: "Please fill in all required fields."
   }
 }, 
 library: {
@@ -730,14 +736,17 @@ editor: {
     other: "Outro"
   },
 },
-
-  explore: {
+explore: {
   header: {
     title: "Explorar",
     subtitle: "Descubra recursos de escrita, tópicos e modelos",
     create_btn: "Criar"
   },
   search_placeholder: "Buscar...",
+  
+  load_more: "Carregar Mais",
+  loading: "Carregando...",
+
   filters: {
     all: "Todos",
     my_content: "Meus Conteúdos",
@@ -769,6 +778,7 @@ editor: {
   create: {
     title: "Criar Novo Conteúdo",
     desc: "Adicione conteúdo para outros descobrirem e usarem.",
+    template_help: "Use [colchetes] para seções de preenchimento, ex: \"O [tópico] é importante porque [motivo].\"",
     labels: {
       type: "Tipo de Conteúdo",
       title: "Título",
@@ -778,7 +788,10 @@ editor: {
       author: "Autor",
       source: "Fonte (opcional)",
       template: "Conteúdo do Modelo",
-      categories: "Categorias"
+      categories: "Categorias",
+      essay_type_optional: "Tipo de Redação (Opcional)",
+      scoring_categories: "Categorias de Avaliação",
+      preview: "Pré-visualização:"
     },
     placeholders: {
       title: "Digite um título...",
@@ -789,7 +802,8 @@ editor: {
       source: "Livro, discurso, entrevista...",
       template: "Escreva seu modelo. Use [PLACEHOLDER] para lacunas.",
       category_name: "Nome da categoria",
-      score: "Máx"
+      score: "Máx",
+      select_essay_type_rubric: "Selecione o tipo de redação para esta rubrica"
     },
     hint: "Dica: Use [COLCHETES] para marcar áreas que os usuários devem preencher.",
     add_category: "Adicionar Categoria",
@@ -803,46 +817,18 @@ editor: {
     desc_default: "Seja o primeiro a adicionar conteúdo!",
     btn_create: "Criar Conteúdo"
   },
+  
   toast: {
-  topic_created: "Tópico criado",
-  topic_desc: "Seu tópico foi criado para os membros da comunidade!",
-  topic_failed: "Falha na criação",
-  topic_failed_desc: "Falha ao criar tópico. Tente novamente.", 
-  reviewed: "Marcado como revisado",
-  reviewed_desc: "O envio foi marcado como revisado.", 
-  review_failed: "Falha na revisão",
-  review_failed_desc: "Falha ao marcar como revisado. Tente novamente.", 
-  action_failed: "Ação falhou",
-  like_failed_desc: "Falha ao atualizar curtida. Tente novamente.",
-  comm_created: "Comunidade criada",
-  comm_created_desc: "Sua comunidade foi criada com sucesso!",
-  comm_failed: "Falha na criação",
-  comm_failed_desc: "Falha ao criar comunidade. Tente novamente.", 
-  request_sent: "Solicitação enviada",
-  request_sent_desc: "Sua solicitação foi enviada para aprovação do líder.",
-  joined: "Entrou na comunidade",
-  joined_desc: "Você entrou na comunidade!",
-  join_failed: "Falha ao entrar",
-  join_failed_desc: "Falha ao entrar na comunidade. Tente novamente.", 
-  left: "Saiu da comunidade",
-  left_desc: "Você saiu da comunidade.",
-  leave_failed: "Falha ao sair",
-  leave_failed_desc: "Falha ao sair da comunidade. Tente novamente.", 
-  req_approved: "Solicitação aprovada",
-  req_approved_desc: "O usuário foi adicionado à comunidade.", 
-  approve_failed_desc: "Falha ao aprovar solicitação.", 
-  req_rejected: "Solicitação rejeitada",
-  req_rejected_desc: "A solicitação de entrada foi rejeitada.", 
-  reject_failed_desc: "Falha ao rejeitar solicitação.",
-  promoted: "Membro promovido",
-  promoted_desc: "O membro agora é um líder.",
-  promote_failed_desc: "Falha ao promover membro.",
-  demoted: "Líder rebaixado",
-  demoted_desc: "O líder agora é um membro comum.", 
-  demote_failed_desc: "Falha ao rebaixar líder.", 
-  transferred: "Liderança transferida",
-  transferred_desc: "Você transferiu a liderança principal para outro membro.",
-  transfer_failed_desc: "Falha ao transferir liderança." 
+    created: "Criado!",
+    created_desc: "Seu conteúdo foi adicionado ao Explorar.",
+    create_failed: "Falha",
+    create_failed_desc: "Não foi possível criar o conteúdo.",
+    deleted: "Excluído",
+    deleted_desc: "Conteúdo removido.",
+    copied: "Copiado!",
+    copied_desc: "Citação copiada para a área de transferência.",
+    incomplete: "Incompleto",
+    incomplete_desc: "Por favor, preencha todos os campos obrigatórios." // Nova chave necessária
   }
 },
 library: {

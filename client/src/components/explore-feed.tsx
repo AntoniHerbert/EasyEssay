@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import type { ExploreItemWithStatus, PaginatedResponse, PluginUtils } from "@/fe
 type FilterType = 'all' | 'my_content' | 'saved' | ExploreContentType;
 
 export function ExploreFeed() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -93,10 +95,17 @@ export function ExploreFeed() {
       queryClient.invalidateQueries({ queryKey: ["/api/explore"] });
       setCreateDialogOpen(false);
       resetForm();
-      toast({ title: "Created!", description: "Your content has been added to Explore." });
+      toast({ 
+        title: t('explore.toast.created'), 
+        description: t('explore.toast.created_desc') 
+      });
     },
     onError: () => {
-      toast({ title: "Failed", description: "Could not create content.", variant: "destructive" });
+      toast({ 
+        title: t('explore.toast.create_failed'), 
+        description: t('explore.toast.create_failed_desc'), 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -125,7 +134,10 @@ export function ExploreFeed() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/explore"] });
       setSelectedItem(null);
-      toast({ title: "Deleted", description: "Content removed." });
+      toast({ 
+        title: t('explore.toast.deleted'), 
+        description: t('explore.toast.deleted_desc') 
+      });
     },
   });
 
@@ -142,7 +154,11 @@ export function ExploreFeed() {
     const payload = plugin.buildPayload ? plugin.buildPayload(creationPayload) : creationPayload;
     
     if (!plugin.validatePayload(payload) && createType !== 'essay_topic') {
-      toast({ title: "Incomplete", description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ 
+        title: t('explore.toast.incomplete'), 
+        description: t('explore.toast.incomplete_desc'), 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -194,9 +210,10 @@ export function ExploreFeed() {
             <div className="flex items-center gap-2">
               <Badge className={Plugin.colorClass}>
                 <Plugin.icon className="w-3 h-3 mr-1" />
-                {Plugin.label}
+                {/* Tradução dinâmica do tipo no badge */}
+                {t(`explore.types.${selectedItem.type}`)}
               </Badge>
-              {selectedItem.isFeatured && <Badge variant="secondary">Featured</Badge>}
+              {selectedItem.isFeatured && <Badge variant="secondary">{t('explore.card.featured')}</Badge>}
             </div>
             <DialogTitle className="text-xl">{selectedItem.title}</DialogTitle>
             {selectedItem.subtitle && (
@@ -220,13 +237,13 @@ export function ExploreFeed() {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create New Content</DialogTitle>
-            <DialogDescription>Add content for others to discover and use.</DialogDescription>
+            <DialogTitle>{t('explore.create.title')}</DialogTitle>
+            <DialogDescription>{t('explore.create.desc')}</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Content Type</Label>
+              <Label>{t('explore.create.labels.type')}</Label>
               <Select value={createType} onValueChange={(v) => {
                 setCreateType(v as ExploreContentType);
                 setCreationPayload({});
@@ -239,7 +256,8 @@ export function ExploreFeed() {
                     <SelectItem key={plugin.type} value={plugin.type}>
                       <div className="flex items-center gap-2">
                         <plugin.icon className="w-4 h-4" />
-                        {plugin.label}
+                        {/* Tradução dinâmica no dropdown de criação */}
+                        {t(`explore.types.${plugin.type}`)}
                       </div>
                     </SelectItem>
                   ))}
@@ -248,22 +266,24 @@ export function ExploreFeed() {
             </div>
             
             <div className="space-y-2">
-              <Label>{createType === 'quote' ? 'Quote Text' : 'Title'}</Label>
+              <Label>
+                {createType === 'quote' ? t('explore.create.labels.quote_text') : t('explore.create.labels.title')}
+              </Label>
               <Input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={createType === 'quote' ? 'Enter the quote...' : 'Enter a title...'}
+                placeholder={createType === 'quote' ? t('explore.create.placeholders.quote') : t('explore.create.placeholders.title')}
                 data-testid="input-create-title"
               />
             </div>
             
             {createType !== 'quote' && (
               <div className="space-y-2">
-                <Label>Subtitle (Optional)</Label>
+                <Label>{t('explore.create.labels.subtitle')}</Label>
                 <Input
                   value={newSubtitle}
                   onChange={(e) => setNewSubtitle(e.target.value)}
-                  placeholder="Brief description..."
+                  placeholder={t('explore.create.placeholders.subtitle')}
                   data-testid="input-create-subtitle"
                 />
               </div>
@@ -277,14 +297,14 @@ export function ExploreFeed() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              Cancel
+              {t('explore.create.cancel')}
             </Button>
             <Button 
               onClick={handleCreate} 
               disabled={!newTitle.trim() || createItemMutation.isPending}
               data-testid="btn-submit-create"
             >
-              {createItemMutation.isPending ? "Creating..." : "Create"}
+              {createItemMutation.isPending ? t('explore.create.submitting') : t('explore.create.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,8 +317,8 @@ export function ExploreFeed() {
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Explore</h2>
-            <p className="text-muted-foreground">Discover writing resources, topics, and templates</p>
+            <h2 className="text-2xl font-bold mb-2">{t('explore.header.title')}</h2>
+            <p className="text-muted-foreground">{t('explore.header.subtitle')}</p>
           </div>
         </div>
         <div className="space-y-4">
@@ -318,22 +338,25 @@ export function ExploreFeed() {
   }
 
   const filterButtons: { key: FilterType; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'my_content', label: 'My Content' },
-    { key: 'saved', label: 'Saved' },
-    ...getAllPlugins().map(plugin => ({ key: plugin.type as FilterType, label: plugin.label })),
+    { key: 'all', label: t('explore.filters.all') },
+    { key: 'my_content', label: t('explore.filters.my_content') },
+    { key: 'saved', label: t('explore.filters.saved') },
+    ...getAllPlugins().map(plugin => ({ 
+      key: plugin.type as FilterType, 
+      label: t(`explore.types.${plugin.type}`)
+    })),
   ];
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold mb-2">Explore</h2>
-          <p className="text-muted-foreground">Discover writing resources, topics, and templates</p>
+          <h2 className="text-2xl font-bold mb-2">{t('explore.header.title')}</h2>
+          <p className="text-muted-foreground">{t('explore.header.subtitle')}</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} className="mt-4 sm:mt-0" data-testid="btn-create-content">
           <Plus className="w-4 h-4 mr-2" />
-          Create
+          {t('explore.header.create_btn')}
         </Button>
       </div>
 
@@ -341,7 +364,7 @@ export function ExploreFeed() {
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search..."
+            placeholder={t('explore.search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -373,15 +396,15 @@ export function ExploreFeed() {
         <Card>
           <CardContent className="p-12 text-center">
             <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">No content found</h3>
+            <h3 className="text-lg font-medium mb-2">{t('explore.empty.title')}</h3>
             <p className="text-muted-foreground mb-4">
               {searchQuery || activeFilter !== 'all'
-                ? "Try adjusting your search or filters."
-                : "Be the first to add content!"}
+                ? t('explore.empty.desc_search')
+                : t('explore.empty.desc_default')}
             </p>
             <Button onClick={() => setCreateDialogOpen(true)} data-testid="btn-create-first">
               <Plus className="w-4 h-4 mr-2" />
-              Create Content
+              {t('explore.empty.btn_create')}
             </Button>
           </CardContent>
         </Card>
@@ -397,7 +420,7 @@ export function ExploreFeed() {
                 disabled={isFetchingNextPage}
                 data-testid="btn-load-more"
               >
-                {isFetchingNextPage ? "Loading..." : "Load More"}
+                {isFetchingNextPage ? t('explore.loading') : t('explore.load_more')}
               </Button>
             </div>
           )}
