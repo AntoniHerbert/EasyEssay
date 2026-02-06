@@ -289,7 +289,8 @@ community_feed: {
     subtitle: "Discover and learn from essays shared by other writers",
     no_essays: "No community essays yet",
     be_first: "Be the first to share your essay with the community!",
-    load_more: "Load More Essays"
+    load_more: "Load More Essays",
+    end_of_list: "You've reached the end of the list"
   },
   communities: {
     title: "Writing Communities",
@@ -950,7 +951,8 @@ community_feed: {
     subtitle: "Descubra e aprenda com redações compartilhadas por outros escritores",
     no_essays: "Nenhuma redação da comunidade ainda",
     be_first: "Seja o primeiro a compartilhar sua redação com a comunidade!",
-    load_more: "Carregar Mais Redações"
+    load_more: "Carregar Mais Redações",
+    end_of_list: "Você chegou ao fim da lista"
   },
   communities: {
     title: "Comunidades de Escrita",

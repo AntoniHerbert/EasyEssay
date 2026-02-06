@@ -253,31 +253,30 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
-          {[
-            { key: "all", label: t('library.filters.all') },
-            { key: "drafts", label: t('library.filters.drafts') },
-            { key: "communities", label: t('library.filters.communities') },
-            { key: "analyzed", label: t('library.filters.analyzed') },
-          ].map((filter) => (
-            <Button
-              key={filter.key}
-              variant={activeFilter === filter.key ? "default" : "ghost"}
-              size="sm"
-              onClick={() => {
+      <div className="grid grid-cols-4 gap-1 bg-muted rounded-lg p-1 mb-6 w-fit">
+        {[
+          { key: "all", label: t('library.filters.all') },
+          { key: "drafts", label: t('library.filters.drafts') },
+          { key: "communities", label: t('library.filters.communities') },
+          { key: "analyzed", label: t('library.filters.analyzed') },
+        ].map((filter) => (
+          <Button
+            key={filter.key}
+            variant={activeFilter === filter.key ? "default" : "ghost"}
+            size="sm"
+            onClick={() => {
                 setActiveFilter(filter.key);
                 if (filter.key !== "communities") {
                   setCommunityFilter("all");
                 }
               }}
-              className={activeFilter === filter.key ? "shadow-sm" : ""}
-              data-testid={`filter-${filter.key}`}
-            >
-              {filter.label}
-            </Button>
-          ))}
-        </div>
+            className={activeFilter === filter.key ? "shadow-sm" : ""}
+            data-testid={`filter-${filter.key}`}
+          >
+            {filter.label}
+          </Button>
+        ))}
+      </div>
         
         {/* Community dropdown filter - shown when Communities tab is active */}
         {activeFilter === "communities" && communities.length > 0 && (
@@ -293,7 +292,6 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
             </SelectContent>
           </Select>
         )}
-      </div>
 
       {/* Essays Grid */}
       {allEssays.length === 0 ? (

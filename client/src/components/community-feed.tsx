@@ -358,6 +358,10 @@ export function CommunityFeed() {
     return Math.ceil(wordCount / wordsPerMinute);
   };
 
+    const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   const getAccuracyScore = () => {
     return Math.floor(Math.random() * 10) + 90;
   };
@@ -437,103 +441,129 @@ export function CommunityFeed() {
               const readingTime = getReadingTime(essay.wordCount);
               
               return (
-                <Card key={essay.id} className="hover:shadow-md transition-shadow" data-testid={`community-essay-${essay.id}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage 
-                          src={getAvatarImage(essay.authorName)} 
-                          alt={essay.authorName}
-                        />
-                        <AvatarFallback>
-                          {essay.authorName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Link href={`/profile/${essay.authorId}`}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="font-medium hover:text-primary p-0 h-auto"
-                              data-testid={`button-author-${essay.authorId}`}
-                            >
-                              {essay.authorName}
-                            </Button>
-                          </Link>
-                          <span className="text-muted-foreground text-sm">
-                            {new Date(essay.updatedAt).toLocaleDateString(i18n.language)}
-                          </span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${topic.color}`}>
-                            {t(`community_feed.communities.filters.${topic.key}`)}
-                          </span>
-                        </div>
-                        
-                        <Link href={`/essay/${essay.id}`}>
-                          <h3 className="text-xl font-semibold mb-3 hover:text-primary cursor-pointer transition-colors" data-testid={`essay-title-${essay.id}`}>
-                            {essay.title}
-                          </h3>
+              <Card key={essay.id} className="hover:shadow-md transition-shadow" data-testid={`community-essay-${essay.id}`}>
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                          <Avatar>
+                            <AvatarImage src= {getInitials(essay.authorName || "User")} alt={essay.authorName} />
+                            <AvatarFallback>
+                          {    getInitials(essay.authorName || "User")}
+                            </AvatarFallback>
+                          </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Link href={`/profile/${essay.authorId}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="font-medium hover:text-primary p-0 h-auto block truncate max-w-[80px] sm:max-w-fit"
+                            data-testid={`button-author-${essay.authorId}`}
+                          >
+                            {essay.authorName}
+                          </Button>
                         </Link>
-                        
-                        <p className="text-muted-foreground mb-4 line-clamp-3">
-                          {essay.content.substring(0, 300)}...
-                        </p>
-                        
-                        <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm shrink-0">
+                          {new Date(essay.updatedAt).toLocaleDateString(i18n.language)}
+                        </span>
+                        <span className={`px-2 py-1 text-xs rounded-full shrink-0 ${topic.color}`}>
+                          {t(`community_feed.communities.filters.${topic.key}`)}
+                        </span>
+                      </div>
+                      
+                      <Link href={`/essay/${essay.id}`}>
+                        <h3 className="text-xl font-semibold mb-3 hover:text-primary cursor-pointer transition-colors break-words" data-testid={`essay-title-${essay.id}`}>
+                          {essay.title}
+                        </h3>
+                      </Link>
+                      
+                      <p className="text-muted-foreground mb-4 line-clamp-3 break-words">
+                        {essay.content.substring(0, 300)}...
+                      </p>
+                      
+                      <div className="flex items-center justify-between">
                         <div className="flex space-x-4 text-sm text-muted-foreground">
-                            <div className="flex items-center space-x-1">
-                              <Clock className="w-4 h-4" />
-                              <span>{readingTime} {t('community_feed.communities.card.min_read')}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <BookOpen className="w-4 h-4" />
-                              <span>{essay.wordCount} {t('community_feed.communities.card.words')}</span>
-                            </div>
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4" />
+                            <span>{readingTime} {t('community_feed.communities.card.min_read')}</span>
                           </div>
-                          <div className="flex items-center space-x-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleLikeMutation.mutate(essay.id)}
-                              disabled={toggleLikeMutation.isPending}
-                              className="text-muted-foreground hover:text-red-500 transition-colors"
-                              data-testid={`button-like-${essay.id}`}
-                            >
-                              <Heart className="w-4 h-4 mr-1" />
-                              <span className="text-sm">
-                                {Math.floor(Math.random() * 100) + 10}
-                              </span>
-                            </Button>
-                          </div>
+                          <div className="flex items-center space-x-1">
+                            <BookOpen className="w-4 h-4" />
+                            <span>{essay.wordCount} {t('community_feed.communities.card.words')}</span>
+                          </div>{/* 
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            <span>{accuracyScore}% accuracy</span>
+                          </div>*/}
+                        </div> 
+                        <div className="flex items-center space-x-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleLikeMutation.mutate(essay.id)}
+                            disabled={toggleLikeMutation.isPending}
+                            className="text-muted-foreground hover:text-red-500 transition-colors"
+                            data-testid={`button-like-${essay.id}`}
+                          >
+                            <Heart className="w-4 h-4 mr-1" />
+                            <span className="text-sm">
+                              {Math.floor(Math.random() * 100) + 10}
+                            </span>
+                          </Button>{/*
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-primary transition-colors"
+                            data-testid={`button-comment-${essay.id}`}
+                          >
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            <span className="text-sm">
+                              {Math.floor(Math.random() * 20) + 1}
+                            </span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground"
+                            data-testid={`button-bookmark-${essay.id}`}
+                          >
+                            <Bookmark className="w-4 h-4" />
+                          </Button>*/}
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
+              </Card>
               );
             })}
             
             {/* Load More Button for Essays */}
-            {hasNextEssays && (
-              <div className="flex justify-center mt-8 pb-8">
-                <Button 
-                  variant="outline" 
-                  onClick={() => fetchNextEssays()} 
-                  disabled={isFetchingNextEssays}
-                  className="w-full sm:w-auto min-w-[150px]"
-                >
-                  {isFetchingNextEssays ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('library.loading_more', 'Loading more...')}
-                    </>
-                  ) : (
-                    t('library.load_more', 'Load More')
-                  )}
-                </Button>
-              </div>
-            )}
+{hasNextEssays && (
+            <div className="text-center py-4">
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                onClick={() => fetchNextEssays()}
+                disabled={isFetchingNextEssays}
+                data-testid="button-load-more"
+              >
+                {isFetchingNextEssays ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  t('community_feed.essays.load_more')
+                )}
+              </Button>
+            </div>
+          )}
+          {!hasNextEssays && allEssays.length > 0 && (
+             <p className="text-center text-muted-foreground text-sm mt-4">
+               {t('community_feed.essays.end_of_list')}
+             </p>
+          )}
           </div>
         )}
       </div>

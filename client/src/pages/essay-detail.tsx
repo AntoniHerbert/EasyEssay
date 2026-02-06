@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next"; // <--- Importado
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import { ArrowLeft, MessageSquare, Users, Eye, Calendar, CheckCircle2, Heart, Lo
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { type Essay, type PeerReview, type ReviewCategory, type CorrectionObject, type RubricCategory } from "@shared/schema";
+import { type Essay, type PeerReview, type ReviewCategory, type CorrectionObject, type RubricCategory, PeerReviewWithProfile } from "@shared/schema";
 
 const RUBRIC_COLORS = [
   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -389,6 +389,11 @@ export default function EssayDetail() {
   const reviewedCategoriesCount = REVIEW_CATEGORIES.filter(cat => isCategoryReviewed(cat.key)).length;
   const reviewProgress = (reviewedCategoriesCount / REVIEW_CATEGORIES.length) * 100;
 
+  const getReviewerName = (review: PeerReviewWithProfile) => {
+    if (review.reviewerId === "AI") return "AI";
+    return review.reviewerName || "Anonymous Student";
+  };
+
   const renderHighlightedText = (text: string) => {
     if (!viewingReviewId) {
       return <span>{text}</span>;
@@ -475,35 +480,56 @@ export default function EssayDetail() {
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+      <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-x-4 gap-y-2 mb-6">
+        
+
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold">{essayData?.title}</h1>
-          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+
+
+        <div className="col-span-2 row-start-2 md:col-auto md:row-auto md:flex-1 min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold break-words">{essayData?.title}</h1>
+          
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-muted-foreground">
+            {/* Autor */}
             <div className="flex items-center gap-2">
               <Avatar className="w-6 h-6">
                 <AvatarFallback>
                   {essayData?.authorName.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span>{essayData?.authorName}</span>
+              {isAuthor ? (
+                <span className="font-medium text-sm pl-2">{essayData?.authorName}</span>
+              ) : (
+                <Link href={`/profile/${essayData?.authorId}`}>
+                  <Button variant="ghost" size="sm" className="font-medium hover:text-primary p-0 h-auto ml-2">
+                    {essayData?.authorName}
+                  </Button>
+                </Link>
+              )}
             </div>
-            <div className="flex items-center gap-1">
+
+            {/* Data */}
+            <div className="flex items-center gap-1 whitespace-nowrap">
               <Calendar className="w-4 h-4" />
               <span>{essayData ? new Date(essayData.createdAt).toLocaleDateString(i18n.language) : ''}</span>
             </div>
-            <div className="flex items-center gap-1">
+
+            {/* Palavras */}
+            <div className="flex items-center gap-1 whitespace-nowrap">
               <Eye className="w-4 h-4" />
               <span>{t('essay.words_count', { count: essayData?.wordCount })}</span>
             </div>
           </div>
         </div>
-        <div className="text-right">
+
+
+        <div className="col-start-2 row-start-1 justify-self-end md:col-auto md:row-auto md:justify-self-auto md:ml-auto text-right pl-2">
           <div className="text-2xl font-bold text-primary">{headerScore}/{maxScore}</div>
           <div className="text-sm text-muted-foreground">{headerLabel}</div>
         </div>
+
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -562,7 +588,19 @@ export default function EssayDetail() {
                         <div key={review.id} className="space-y-3 pb-4 border-b last:border-b-0">
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className="font-medium text-sm">{t('essay_detail.comments.reviewer')}: {review.reviewerId}</div>
+                              <div className="font-medium text-sm">{t('essay_detail.comments.reviewer')}: {review.reviewerId === "AI" || review.reviewerId === user?.id ? (
+                                  getReviewerName(review)
+                                ) : (
+                                  <Link href={`/profile/${review.reviewerId}`}>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="font-medium hover:text-primary p-0 h-auto ml-1"
+                                    >
+                                      {getReviewerName(review)}
+                                    </Button>
+                                  </Link>
+                                )}</div>                              
                               <div className="text-xs text-muted-foreground">
                                 {t('essay_detail.scores.overall')}: {
                                   hasCustomRubric
@@ -813,6 +851,7 @@ export default function EssayDetail() {
                   {reviews.map((review) => {
                     const isActive = viewingReviewId === review.id;
                     const isAI = review.reviewerId === "AI";
+                    const reviewerName = getReviewerName(review);
                     return (
                       <div 
                         key={review.id} 
@@ -833,7 +872,7 @@ export default function EssayDetail() {
                               </>
                             ) : (
                               <>
-                                {t('essay_detail.comments.reviewer')} {review.reviewerId} {isActive && <span className="text-primary">({t('essay_detail.comments.viewing')})</span>}
+                                {t('essay_detail.comments.reviewer')} {reviewerName} {isActive && <span className="text-primary">({t('essay_detail.comments.viewing')})</span>}
                               </>
                             )}
                           </div>
