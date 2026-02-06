@@ -405,7 +405,7 @@ export function CommunityFeed() {
                 <SelectItem value="environment">{t('community_feed.communities.filters.environment')}</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
+     {/*        <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[150px]" data-testid="select-sort">
                 <SelectValue placeholder="Most Recent" />
               </SelectTrigger>
@@ -414,7 +414,7 @@ export function CommunityFeed() {
                 <SelectItem value="popular">Most Popular</SelectItem>
                 <SelectItem value="rated">Highest Rated</SelectItem>
               </SelectContent>
-            </Select>
+            </Select>*/}
           </div>
         </div>
 
@@ -466,7 +466,7 @@ export function CommunityFeed() {
                             {new Date(essay.updatedAt).toLocaleDateString(i18n.language)}
                           </span>
                           <span className={`px-2 py-1 text-xs rounded-full ${topic.color}`}>
-                            {t(`community.topics.${topic.key}`)}
+                            {t(`community_feed.communities.filters.${topic.key}`)}
                           </span>
                         </div>
                         
@@ -484,11 +484,11 @@ export function CommunityFeed() {
                         <div className="flex space-x-4 text-sm text-muted-foreground">
                             <div className="flex items-center space-x-1">
                               <Clock className="w-4 h-4" />
-                              <span>{readingTime} {t('community.card.min_read')}</span>
+                              <span>{readingTime} {t('community_feed.communities.card.min_read')}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <BookOpen className="w-4 h-4" />
-                              <span>{essay.wordCount} {t('community.card.words')}</span>
+                              <span>{essay.wordCount} {t('community_feed.communities.card.words')}</span>
                             </div>
                           </div>
                           <div className="flex items-center space-x-3">
@@ -504,25 +504,6 @@ export function CommunityFeed() {
                               <span className="text-sm">
                                 {Math.floor(Math.random() * 100) + 10}
                               </span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                              data-testid={`button-comment-${essay.id}`}
-                            >
-                              <MessageCircle className="w-4 h-4 mr-1" />
-                              <span className="text-sm">
-                                {Math.floor(Math.random() * 20) + 1}
-                              </span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-muted-foreground hover:text-foreground"
-                              data-testid={`button-bookmark-${essay.id}`}
-                            >
-                              <Bookmark className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
