@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import { Search, Plus, BookOpen } from "lucide-react";
 import { EXPLORE_PLUGINS, getPlugin, getAllPlugins } from "@/features/explore/registry";
 import type { ExploreItemWithStatus, PaginatedResponse, PluginUtils } from "@/features/explore/types";
+import { useDebounce } from "@/hooks/use-debounce";
 
 type FilterType = 'all' | 'my_content' | 'saved' | ExploreContentType;
 
@@ -36,6 +37,8 @@ export function ExploreFeed() {
   const [newSubtitle, setNewSubtitle] = useState("");
   const [creationPayload, setCreationPayload] = useState<any>({});
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
   const getTypeFilter = (): ExploreContentType | undefined => {
     if (activeFilter === 'all' || activeFilter === 'my_content' || activeFilter === 'saved') {
       return undefined;
@@ -49,8 +52,6 @@ export function ExploreFeed() {
     }
     return undefined;
   };
-
-  const debouncedSearchQuery = searchQuery;
 
   const {
     data,
@@ -77,6 +78,7 @@ export function ExploreFeed() {
       const authorFilter = getAuthorFilter();
       if (typeFilter) params.set('type', typeFilter);
       if (authorFilter) params.set('authorId', authorFilter);
+      
       if (debouncedSearchQuery) params.set('q', debouncedSearchQuery);
       
       const res = await fetch(`/api/explore?${params.toString()}`, { credentials: 'include' });
