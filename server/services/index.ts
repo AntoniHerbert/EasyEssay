@@ -36,7 +36,7 @@ export const aiService = new AiService(essayStore, peerReviewStore, transactionM
 export const authService = new AuthService(userStore, profileStore, transactionManager);
 
 // EssayService precisa de essay, profile E do aiService (que criamos acima)
-export const essayService = new EssayService(essayStore, profileStore, aiService, peerReviewStore, essayLikeStore, transactionManager);
+export const essayService = new EssayService(essayStore, profileStore, aiService, peerReviewStore, essayLikeStore, communityStore, transactionManager);
 
 // ProfileService precisa de profile
 export const profileService = new ProfileService(profileStore, transactionManager);

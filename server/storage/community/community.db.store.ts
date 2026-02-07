@@ -127,12 +127,18 @@ export class CommunityDbStore implements ICommunityStore {
     return result;
   }
 
-  async getUserCommunities(userId: string): Promise<CommunityMember[]> {
-    return await this.db
+  async getUserCommunities(userId: string): Promise<any[]> {
+    const results = await this.db
       .select()
       .from(communityMembers)
+      .innerJoin(communities, eq(communityMembers.communityId, communities.id))
       .where(eq(communityMembers.userId, userId))
       .orderBy(desc(communityMembers.joinedAt));
+
+    return results.map((row: any) => ({
+      ...row.community_members,
+      community: row.communities
+    }));
   }
 
   async addMember(member: InsertCommunityMember, tx?: Tx): Promise<CommunityMember> {

@@ -265,7 +265,23 @@ export class CommunityService {
 
   // --- Topics & Submissions ---
 
-  async createTopic(userId: string, data: InsertCommunityTopic) {
+  async getTopic(topicId: string) {
+    return this.store.getCommunityTopic(topicId);
+  }
+
+  async getCommunityTopics(communityId: string) {
+    return this.store.getCommunityTopics(communityId);
+  }
+
+  async createTopic(userId: string, 
+    data: { 
+      communityId: string; 
+      title: string; 
+      description?: string | null; 
+      deadline?: Date | null; 
+      isActive?: boolean;
+    }
+  ) {
     const member = await this.store.getCommunityMember(data.communityId, userId);
     if (!member || member.role !== 'leader') throw new Error("FORBIDDEN");
 
@@ -276,6 +292,8 @@ export class CommunityService {
       createdById: userId,
       createdByName: profile?.displayName || "Unknown"
     });
+
+    
   }
 
   async updateTopic(topicId: string, userId: string, updates: Partial<InsertCommunityTopic>) {
@@ -348,5 +366,15 @@ export class CommunityService {
 
         return { ...submission, essay };
     });
+  }
+
+  async markSubmissionReviewed(submissionId: string, reviewerId: string) {
+    const submission = await this.store.markSubmissionReviewed(submissionId, reviewerId);
+    
+    if (!submission) {
+      throw new Error("NOT_FOUND");
+    }
+    
+    return submission;
   }
 }

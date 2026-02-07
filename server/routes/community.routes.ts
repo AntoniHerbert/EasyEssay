@@ -113,6 +113,58 @@ router.post("/communities/:id/leave", async (req, res) => {
   }
 });
 
+router.post("/communities/:id/members/:userId/promote", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
+
+  try {
+    const updated = await communityService.updateMemberRole(
+      req.params.id, 
+      req.session.userId, 
+      req.params.userId, 
+      "leader"
+    );
+    res.json(updated);
+
+  } catch (error: any) {
+    if (error.message === "FORBIDDEN") {
+      return res.status(403).json({ message: "Only leaders can promote members" });
+    }
+    if (error.message === "MEMBER_NOT_FOUND") {
+      return res.status(404).json({ message: "Member not found" });
+    }
+    if (error.message === "NOT_FOUND") {
+      return res.status(404).json({ message: "Community not found" });
+    }
+    res.status(500).json({ message: "Failed to promote member" });
+  }
+});
+
+router.post("/communities/:id/members/:userId/demote", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
+
+  try {
+    const updated = await communityService.updateMemberRole(
+      req.params.id, 
+      req.session.userId, 
+      req.params.userId, 
+      "member"
+    );
+    res.json(updated);
+
+  } catch (error: any) {
+    if (error.message === "FORBIDDEN") {
+      return res.status(403).json({ message: "Only leaders can demote members" });
+    }
+    if (error.message === "CANNOT_DEMOTE_OWNER") {
+      return res.status(400).json({ message: "Cannot demote the community owner" });
+    }
+    if (error.message === "MEMBER_NOT_FOUND") {
+      return res.status(404).json({ message: "Member not found" });
+    }
+    res.status(500).json({ message: "Failed to demote member" });
+  }
+});
+
 router.post("/communities/:id/transfer-leadership", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
   try {
@@ -158,14 +210,112 @@ router.post("/communities/:id/join-requests/:requestId/:action", async (req, res
 
 router.post("/communities/:id/topics", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
-  try {
-    const topic = await communityService.createTopic(req.session.userId, { ...req.body, communityId: req.params.id });
+try {
+    const schema = insertCommunityTopicSchema
+      .pick({ 
+        title: true, 
+        description: true,
+        isActive: true
+      })
+      .extend({
+        deadline: z.coerce.date().optional()
+      });
+
+      const data = schema.parse(req.body);
+
+    const topic = await communityService.createTopic(req.session.userId, { 
+      ...data, 
+      communityId: req.params.id 
+    });
+
     res.status(201).json(topic);
+
   } catch (error: any) {
-    if (error.message === "FORBIDDEN") return res.status(403).json({ message: "Forbidden" });
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.errors });
+    }
+    if (error.message === "FORBIDDEN") {
+      return res.status(403).json({ message: "Only leaders can create topics" });
+    }
+    if (error.message === "NOT_FOUND") {
+      return res.status(404).json({ message: "Community not found" });
+    }
+    
+    console.error("Error creating topic:", error);
     res.status(500).json({ message: "Failed to create topic" });
   }
 });
+
+router.get("/communities/:id/topics", async (req, res) => {
+  try {
+    const topics = await communityService.getCommunityTopics(req.params.id);
+    res.json(topics);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch topics" });
+  }
+});
+
+router.get("/topics/:id", async (req, res) => {
+  try {
+    const topic = await communityService.getTopic(req.params.id);
+    
+    if (!topic) {
+      return res.status(404).json({ message: "Topic not found" });
+    }
+    res.json(topic);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch topic" });
+  }
+});
+
+router.patch("/topics/:id", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
+
+  try {
+    const updates = insertCommunityTopicSchema.partial().parse(req.body);
+
+    const updated = await communityService.updateTopic(
+      req.params.id, 
+      req.session.userId, 
+      updates
+    );
+    
+    res.json(updated);
+
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+    }
+    if (error.message === "FORBIDDEN") {
+      return res.status(403).json({ message: "Only leaders can update topics" });
+    }
+    if (error.message === "NOT_FOUND") {
+      return res.status(404).json({ message: "Topic not found" });
+    }
+    res.status(500).json({ message: "Failed to update topic" });
+  }
+});
+
+router.patch("/submissions/:id/review", async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  try {
+    const submission = await communityService.markSubmissionReviewed(
+      req.params.id, 
+      req.session.userId
+    );
+    res.json(submission);
+
+  } catch (error: any) {
+    if (error.message === "NOT_FOUND") {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+    res.status(500).json({ message: "Failed to mark submission as reviewed" });
+  }
+});
+
 
 router.get("/topics/:id/submissions", async (req, res) => {
   try {

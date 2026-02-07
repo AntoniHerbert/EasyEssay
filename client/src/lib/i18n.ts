@@ -126,6 +126,7 @@ editor: {
   },
   essay_type_select: "Select essay type",
   types: {
+    compare_contrast: "Compare & Contrast",
     argumentative: "Argumentative",
     narrative: "Narrative",
     descriptive: "Descriptive",
@@ -236,6 +237,16 @@ explore: {
   }
 }, 
 library: {
+  community_filter: {
+    placeholder: "Filter by community",
+    all: "All Communities"
+  },
+  alert: {
+    delete_title: "Delete Essay?",
+    delete_desc: "This will permanently delete \"{{title}}\". This action cannot be undone.",
+    cancel: "Cancel",
+    confirm: "Delete"
+  },
   header: {
     title: "My Essay Library",
     subtitle: "Manage and review your written essays"
@@ -257,7 +268,9 @@ library: {
     words: "{{count}} words",
     view: "View",
     edit: "Edit",
-    confirm_delete: "Are you sure you want to delete this essay? This action cannot be undone."
+    confirm_delete: "Are you sure you want to delete this essay? This action cannot be undone.",
+    publish_tooltip: "Publish to Community",
+    archive_tooltip: "Archive (Make Private)"
   },
   empty: {
     title: "No essays found",
@@ -301,10 +314,11 @@ community_feed: {
     no_communities: "No communities yet",
     be_first_community: "Be the first to create a writing community!",
     back_btn: "Back to Communities",
+    no_description: "No description",
     filters: {
       all: "All Communities",
       member: "My Communities",
-      all_topics: "All Topics",
+      all_topics: "All",
       technology: "Technology",
       science: "Science",
       literature: "Literature",
@@ -354,6 +368,12 @@ community_feed: {
     due_date: "Due {{date}}",
     submissions_count: "{{count}} submissions",
     leader_dashboard: "Leader Dashboard",
+    empty: {
+      no_topics: "No topics yet",
+      create_first: "Create the first topic for your community members to write about.",
+      leader_hasnt_created: "The community leader hasn't created any topics yet.",
+      no_members_track: "No members to track yet. Invite others to join!"
+    },
     stats: {
       submission_rate: "Submission Rate",
       avg_words: "Average Word Count",
@@ -789,6 +809,7 @@ editor: {
   },
   essay_type_select: "Selecione o tipo",
   types: {
+    compare_contrast: "Comparativa",
     argumentative: "Argumentativa",
     narrative: "Narrativa",
     descriptive: "Descritiva",
@@ -899,6 +920,16 @@ explore: {
   }
 },
 library: {
+  community_filter: {
+    placeholder: "Filtrar por comunidade",
+    all: "Todas as Comunidades"
+  },
+  alert: {
+    delete_title: "Excluir Redação?",
+    delete_desc: "Isso excluirá permanentemente \"{{title}}\". Esta ação não pode ser desfeita.",
+    cancel: "Cancelar",
+    confirm: "Excluir"
+  },
   header: {
     title: "Minha Biblioteca",
     subtitle: "Gerencie e revise suas redações"
@@ -920,7 +951,9 @@ library: {
     words: "{{count}} palavras",
     view: "Ver",
     edit: "Editar",
-    confirm_delete: "Tem certeza que deseja excluir esta redação? Esta ação não pode ser desfeita."
+    confirm_delete: "Tem certeza que deseja excluir esta redação? Esta ação não pode ser desfeita.",
+    publish_tooltip: "Tornar Público na Comunidade",
+    archive_tooltip: "Arquivar (Tornar Privado)"
   },
   empty: {
     title: "Nenhuma redação encontrada",
@@ -964,10 +997,11 @@ community_feed: {
     no_communities: "Nenhuma comunidade ainda",
     be_first_community: "Seja o primeiro a criar uma comunidade de escrita!",
     back_btn: "Voltar para Comunidades",
+    no_description: "Sem descrição",
     filters: {
       all: "Todas",
       member: "Minhas Comunidades",
-      all_topics: "Todos os Tópicos",
+      all_topics: "Todos",
       technology: "Tecnologia",
       science: "Ciência",
       literature: "Literatura",
@@ -1017,6 +1051,12 @@ community_feed: {
     due_date: "Vence em {{date}}",
     submissions_count: "{{count}} envios",
     leader_dashboard: "Painel do Líder",
+    empty: {
+      no_topics: "Nenhum tópico ainda",
+      create_first: "Crie o primeiro tópico para os membros da sua comunidade escreverem.",
+      leader_hasnt_created: "O líder da comunidade ainda não criou nenhum tópico.",
+      no_members_track: "Nenhum membro para acompanhar ainda. Convide outros para participar!"
+    },
     stats: {
       submission_rate: "Taxa de Envio",
       avg_words: "Média de Palavras",

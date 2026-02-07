@@ -22,6 +22,6 @@ router.use("/peer-reviews", peerReviewRouter);
 router.use("/inspirations", inspirationRouter);
 router.use("/users", userRouter);
 router.use("/explore", exploreRoutes);
-router.use("/communities", communityRoutes);
+router.use("/", communityRoutes);
 
 export default router;

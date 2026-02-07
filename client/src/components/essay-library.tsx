@@ -74,7 +74,9 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
   });
 
   const communitiesList = useMemo(() => {
-    return userCommunities.map(uc => uc.community);
+    return userCommunities
+      .filter(uc => uc && uc.community)
+      .map(uc => uc.community);
   }, [userCommunities]);
 
   const { 
@@ -111,7 +113,9 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
   });
 
   const allEssays = useMemo(() => {
-    return data?.pages.flatMap((page) => page.data) || [];
+    return data?.pages
+      .flatMap((page) => page.data || [])
+      .filter((essay) => essay && essay.id) || [];
   }, [data]);
 
   const deleteEssayMutation = useMutation({

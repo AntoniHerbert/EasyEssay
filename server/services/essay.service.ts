@@ -49,13 +49,13 @@ export class EssayService {
       let hasAccess = false;
 
       if (topicId) {
-        const topic = await this.communityStore.getTopicById(topicId);
+        const topic = await this.communityStore.getCommunityTopic(topicId);
         if (topic) {
-          const membership = await this.communityStore.getMember(topic.communityId, requestingUserId);
+          const membership = await this.communityStore.getCommunityMember(topic.communityId, requestingUserId);
           if (membership) hasAccess = true;
         }
       } else if (communityId) {
-        const membership = await this.communityStore.getMember(communityId, requestingUserId);
+        const membership = await this.communityStore.getCommunityMember(communityId, requestingUserId);
         if (membership) hasAccess = true;
       }
 
@@ -111,7 +111,7 @@ export class EssayService {
       let hasCommunityAccess = false;
 
       if (essay.communityId) {
-        const membership = await this.communityStore.getMember(essay.communityId, requestingUserId);
+        const membership = await this.communityStore.getCommunityMember(essay.communityId, requestingUserId);
         if (membership) {
           hasCommunityAccess = true;
         }

@@ -118,18 +118,36 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     return parts;
   };
 
-  useEffect(() => {
+useEffect(() => {
     if (!essayId && !essay && !templateDismissed) {
-      if (prefillTitle && !title) {
-        setTitle(prefillTitle);
+      const storedTemplate = localStorage.getItem("selectedTemplate");
+      let dataTitle = prefillTitle;
+      let dataContent = prefillContent;
+
+      if (storedTemplate) {
+        try {
+          const parsed = JSON.parse(storedTemplate);
+          if (parsed.title) dataTitle = parsed.title;
+          if (parsed.content) dataContent = parsed.content;
+          
+          localStorage.removeItem("selectedTemplate");
+        } catch (e) {
+          console.error("Failed to parse selectedTemplate", e);
+        }
       }
-      if (prefillContent && !content) {
-        const hasPlaceholders = /\[[^\]]+\]/.test(prefillContent);
+
+      if (dataTitle && !title) {
+        setTitle(dataTitle);
+      }
+
+      if (dataContent && !content) {
+        const hasPlaceholders = /\[[^\]]+\]/.test(dataContent);
+        
         if (hasPlaceholders) {
           setTemplateMode(true);
-          setTemplateParts(parseTemplateContent(prefillContent));
+          setTemplateParts(parseTemplateContent(dataContent));
         } else {
-          setContent(prefillContent);
+          setContent(dataContent);
         }
       }
     }

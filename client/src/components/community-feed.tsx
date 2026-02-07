@@ -481,7 +481,7 @@ export function CommunityFeed() {
           <div className="mt-4 sm:mt-0 flex items-center space-x-3">
             <Select value={selectedTopic} onValueChange={setSelectedTopic}>
               <SelectTrigger className="w-[150px]" data-testid="select-topic">
-                <SelectValue placeholder={t('community_feed.community.filters.all_topics')} />
+                <SelectValue placeholder={t('community_feed.communities.filters.all_topics')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('community_feed.communities.filters.all_topics')}</SelectItem>
@@ -1198,11 +1198,11 @@ export function CommunityFeed() {
             <Card>
               <CardContent className="p-8 text-center">
                 <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <h4 className="font-medium mb-1">No topics yet</h4>
+                <h4 className="font-medium mb-1">{t('community_feed.topic.empty.no_topics')}</h4>
                 <p className="text-sm text-muted-foreground">
                   {isLeader 
-                    ? "Create the first topic for your community members to write about."
-                    : "The community leader hasn't created any topics yet."}
+                    ? t('community_feed.topic.empty.create_first')
+                    : t('community_feed.topic.empty.leader_hasnt_created')}
                 </p>
               </CardContent>
             </Card>
@@ -1259,12 +1259,27 @@ export function CommunityFeed() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={getAvatarImage(member.username)} alt={member.username} />
-                        <AvatarFallback>{member.username[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                          <AvatarFallback>
+                           {member.username ? member.username.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
+                          </AvatarFallback>
+                        </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{member.username}</p>
-                        {member.role === 'leader' && (
+                          {user?.id === member.userId ? (
+                                <span className="font-medium text-sm truncate block">
+                                  {member.username}
+                                </span>
+                              ) : (
+                                <Link href={`/profile/${member.userId}`}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="font-medium hover:text-primary p-0 h-auto truncate justify-start"
+                                  >
+                                    {member.username}
+                                  </Button>
+                                </Link>
+                              )}                        
+                            {member.role === 'leader' && (
                           <div className="flex items-center gap-1 text-xs text-primary">
                             <Crown className="w-3 h-3" />
                             <span>{isPrimaryLeader ? t('community_feed.detail.primary_leader') : t('community_feed.detail.leader_badge')}</span>
@@ -1386,7 +1401,7 @@ export function CommunityFeed() {
                   return (
                     <div className="text-center py-6 text-muted-foreground">
                       <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                      <p>No members to track yet. Invite others to join!</p>
+                      <p>{t('community_feed.topic.empty.no_members_track')}</p>
                     </div>
                   );
                 }
