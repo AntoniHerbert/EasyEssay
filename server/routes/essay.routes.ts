@@ -60,8 +60,11 @@ router.get("/:id", catchAsync(async (req, res) => {
 }));
 
 router.get("/:id/likes", catchAsync(async (req, res) => {
-  const likes = await essayLikeService.getLikesCount(req.params.id);
-  res.json({ count: likes });
+  const result = await essayLikeService.getLikesData(
+    req.params.id, 
+    req.session.userId 
+  );
+  res.json(result);
 }));
 
 router.get("/:essayId/peer-reviews", catchAsync(async (req, res) => {

@@ -25,6 +25,88 @@ interface CommunityWithMembership extends Community {
   userRole?: string;
 }
 
+function LikeButton({ essayId }: { essayId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const queryKey = ["/api/essays", essayId, "likes"];
+
+  const { data: likeData, isLoading } = useQuery({
+    queryKey: queryKey,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/essays/${essayId}/likes`);
+      return res.json();
+    },
+  });
+
+  const toggleLikeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/essays/${essayId}/like`, {});
+      return res.json();
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousData = queryClient.getQueryData(queryKey);
+
+      queryClient.setQueryData(queryKey, (old: any) => {
+        if (!old) return { count: 0, isLiked: true };
+
+        const wasLiked = old.isLiked;
+        return {
+          ...old,
+          count: wasLiked ? Math.max(0, old.count - 1) : old.count + 1,
+          isLiked: !wasLiked
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (_err, _newTodo, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível registrar seu like.", 
+        variant: "destructive" 
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKey, data);
+    },
+  });
+
+  const count = likeData?.count ?? 0;
+  const isLiked = likeData?.isLiked ?? false; 
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        toggleLikeMutation.mutate();
+      }}
+      disabled={isLoading || toggleLikeMutation.isPending}
+      className={`transition-all duration-200 px-2 group ${
+        isLiked 
+          ? "text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20" 
+          : "text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+      }`}
+      data-testid={`button-like-${essayId}`}
+    >
+      <Heart 
+        className={`w-4 h-4 mr-1.5 transition-transform duration-200 group-active:scale-90 ${
+          isLiked ? "fill-current scale-110" : "fill-none"
+        }`} 
+      />
+      <span className="text-sm font-medium tabular-nums">
+        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : count}
+      </span>
+    </Button>
+  );
+}
+
 interface CommunityPage {
   data: Community[];
   nextCursor: string | null;
@@ -497,19 +579,8 @@ export function CommunityFeed() {
                           </div>*/}
                         </div> 
                         <div className="flex items-center space-x-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleLikeMutation.mutate(essay.id)}
-                            disabled={toggleLikeMutation.isPending}
-                            className="text-muted-foreground hover:text-red-500 transition-colors"
-                            data-testid={`button-like-${essay.id}`}
-                          >
-                            <Heart className="w-4 h-4 mr-1" />
-                            <span className="text-sm">
-                              {Math.floor(Math.random() * 100) + 10}
-                            </span>
-                          </Button>{/*
+                          <LikeButton essayId={essay.id} />
+                          {/*
                           <Button
                             variant="ghost"
                             size="sm"

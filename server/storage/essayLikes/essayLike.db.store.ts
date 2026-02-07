@@ -1,10 +1,9 @@
 import { type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { type EssayLike, type InsertEssayLike } from "@shared/schema";
 import { IEssayLikeStore } from "./essayLike.store";
 import { type Tx } from "../types"; 
-
 
 export class EssayLikeDbStore implements IEssayLikeStore {
   private db;
@@ -13,20 +12,21 @@ export class EssayLikeDbStore implements IEssayLikeStore {
     this.db = db;
   }
 
-  
-
   async countEssayLikes(essayId: string): Promise<number> {
     const result = await this.db
       .select({ value: count() })
       .from(schema.essayLikes)
       .where(eq(schema.essayLikes.essayId, essayId));
       
-    return result[0].value;
+    return result[0]?.value ?? 0;
   }
 
   async createEssayLike(like: InsertEssayLike, tx?: Tx): Promise<EssayLike> {
     const executor = (tx || this.db) as DrizzleDb;
-    const result = await executor.insert(schema.essayLikes).values(like).returning();
+    const result = await executor
+      .insert(schema.essayLikes)
+      .values(like)
+      .returning();
     return result[0];
   }
 
@@ -49,7 +49,9 @@ export class EssayLikeDbStore implements IEssayLikeStore {
       .where(and(
         eq(schema.essayLikes.essayId, essayId),
         eq(schema.essayLikes.userId, userId)
-      ));
+      ))
+      .limit(1);
+      
     return result.length > 0;
   }
 

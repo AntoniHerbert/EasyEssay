@@ -21,7 +21,8 @@ export class EssayLikeMemStore implements IEssayLikeStore {
   async createEssayLike(insertEssayLike: InsertEssayLike, _tx?: Tx): Promise<EssayLike> {
     const id = randomUUID();
     const like: EssayLike = {
-      ...insertEssayLike,
+      essayId: insertEssayLike.essayId,
+      userId: insertEssayLike.userId,
       id,
       createdAt: new Date(),
     };
@@ -30,25 +31,32 @@ export class EssayLikeMemStore implements IEssayLikeStore {
   }
 
   async deleteEssayLike(essayId: string, userId: string, _tx?: Tx): Promise<boolean> {
-    const likeEntry = Array.from(this.essayLikes.entries())
-      .find(([_, like]) => like.essayId === essayId && like.userId === userId);
+    const entries = Array.from(this.essayLikes.entries());
     
-    if (likeEntry) {
-      this.essayLikes.delete(likeEntry[0]);
-      return true;
+    for (const [key, like] of entries) {
+      if (like.essayId === essayId && like.userId === userId) {
+        this.essayLikes.delete(key);
+        return true;
+      }
     }
     return false;
   }
 
   async isEssayLiked(essayId: string, userId: string): Promise<boolean> {
-    return Array.from(this.essayLikes.values())
-      .some(like => like.essayId === essayId && like.userId === userId);
+    for (const like of this.essayLikes.values()) {
+      if (like.essayId === essayId && like.userId === userId) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async deleteByEssayId(essayId: string, _tx?: Tx): Promise<void> {
-  for (const [id, like] of Array.from(this.essayLikes.entries())) {
+    const entries = Array.from(this.essayLikes.entries());
+    
+    for (const [key, like] of entries) {
       if (like.essayId === essayId) {
-        this.essayLikes.delete(id);
+        this.essayLikes.delete(key);
       }
     }
   }
