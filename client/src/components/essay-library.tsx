@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Edit, Share, Check, Clock, Globe, FileText, Eye, Trash2, Users, Loader2, Archive } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Link } from "wouter";
+import { useDebounce } from "@/hooks/use-debounce";
 import { type Essay, type Community, type CommunityMember } from "@shared/schema";
 import {
   AlertDialog,
@@ -53,7 +54,8 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
   const { user } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  const debouncedSearch = useDebounce(searchQuery, 500); 
   
   const [activeFilter, setActiveFilter] = useState("all");
   const [communityFilter, setCommunityFilter] = useState<string>("all");
@@ -61,12 +63,6 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const { data: userCommunities = [] } = useQuery<UserCommunityResponse[]>({
     queryKey: ["/api/user/communities"],
@@ -156,7 +152,8 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
               data: page.data.map((e: EnrichedEssay) => e.id === updatedEssay.id ? { ...e, ...updatedEssay } : e)
             }))
           };
-      });
+        }
+      );
 
       toast({
         title: updatedEssay.isPublic 
@@ -415,8 +412,8 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                           <Edit className="w-4 h-4 mr-1" /> {t('library.card.edit')}
                         </Button>
                       )}
+                    </div>
                   </div>
-                </div>
                 </CardContent>
               </Card>
             ))}
