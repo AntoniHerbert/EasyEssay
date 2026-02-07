@@ -526,6 +526,12 @@ export const insertExploreSaveSchema = createInsertSchema(exploreSaves).omit({
   createdAt: true,
 });
 
+export interface EnrichedEssay extends Essay {
+  communityId: string | null;
+  communityName: string | null;
+  topicTitle: string | null;
+}
+
 export type ExploreItem = typeof exploreItems.$inferSelect;
 export type InsertExploreItem = z.infer<typeof insertExploreItemSchema>;
 export type ExploreLike = typeof exploreLikes.$inferSelect;

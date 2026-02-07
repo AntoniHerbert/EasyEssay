@@ -261,6 +261,7 @@ library: {
   },
   empty: {
     title: "No essays found",
+    no_community_essays: "No essays found in your communities",
     desc_search: "Try adjusting your search terms.",
     desc_default: "Start writing your first essay!",
     create: "Create Essay"
@@ -925,6 +926,7 @@ library: {
     title: "Nenhuma redação encontrada",
     desc_search: "Tente ajustar seus termos de busca.",
     desc_default: "Comece a escrever sua primeira redação!",
+    no_community_essays: "Nenhuma redação encontrada em suas comunidades",
     create: "Criar Redação"
   },
   load_more: "Carregar Mais",

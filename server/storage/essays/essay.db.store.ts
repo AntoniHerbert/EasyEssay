@@ -1,9 +1,15 @@
 import { type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
-import { eq, and, desc, lt, ne, ilike, or, exists } from "drizzle-orm"; 
+import { eq, and, desc, lt, ne, ilike, or, isNotNull, isNull } from "drizzle-orm"; 
 import { type Essay, type InsertEssay, type RubricCategory } from "@shared/schema";
 import { IEssayStore } from "./essay.store";
 import { type Tx } from "../types"; 
+
+export interface EnrichedEssay extends Essay {
+  communityId: string | null;
+  communityName: string | null;
+  topicTitle: string | null;
+}
 
 export class EssayDbStore implements IEssayStore {
   private db;
@@ -12,17 +18,20 @@ export class EssayDbStore implements IEssayStore {
     this.db = db;
   }
 
-  async getEssay(id: string): Promise<Essay | undefined> {
+  async getEssay(id: string): Promise<EnrichedEssay | undefined> {
     const result = await this.db
       .select({
         essay: schema.essays,
         profileDisplayName: schema.userProfiles.displayName,
+        communityId: schema.communities.id,
+        communityName: schema.communities.name,
+        topicTitle: schema.communityTopics.title
       })
       .from(schema.essays)
-      .leftJoin(
-        schema.userProfiles,
-        eq(schema.essays.authorId, schema.userProfiles.userId)
-      )
+      .leftJoin(schema.userProfiles, eq(schema.essays.authorId, schema.userProfiles.userId))
+      .leftJoin(schema.topicSubmissions, eq(schema.essays.id, schema.topicSubmissions.essayId))
+      .leftJoin(schema.communityTopics, eq(schema.topicSubmissions.topicId, schema.communityTopics.id))
+      .leftJoin(schema.communities, eq(schema.communityTopics.communityId, schema.communities.id))
       .where(eq(schema.essays.id, id));
 
     const row = result[0];
@@ -30,7 +39,10 @@ export class EssayDbStore implements IEssayStore {
 
     return {
       ...row.essay,
-      authorName: row.profileDisplayName || row.essay.authorName || "Anonymous"
+      authorName: row.profileDisplayName || row.essay.authorName || "Anonymous",
+      communityId: row.communityId,
+      communityName: row.communityName,
+      topicTitle: row.topicTitle
     };
   }
 
@@ -41,54 +53,59 @@ export class EssayDbStore implements IEssayStore {
     cursor?: Date,
     excludeAuthorId?: string,
     searchQuery?: string,
-    statusFilter?: "drafts" | "analyzed" | "all",
-    communityId?: string
-  ): Promise<Essay[]> {
+    statusFilter?: "drafts" | "analyzed" | "all" | "submitted",
+    communityId?: string,
+    topicId?: string
+  ): Promise<EnrichedEssay[]> {
     
     let query = this.db
       .select({
         essay: schema.essays,
         profileDisplayName: schema.userProfiles.displayName,
-      }).from(schema.essays)
-      .leftJoin(
-        schema.userProfiles,
-        eq(schema.essays.authorId, schema.userProfiles.userId)
-      );
+        communityId: schema.communities.id,
+        communityName: schema.communities.name,
+        topicTitle: schema.communityTopics.title
+      })
+      .from(schema.essays)
+      .leftJoin(schema.userProfiles, eq(schema.essays.authorId, schema.userProfiles.userId))
+      .leftJoin(schema.topicSubmissions, eq(schema.essays.id, schema.topicSubmissions.essayId))
+      .leftJoin(schema.communityTopics, eq(schema.topicSubmissions.topicId, schema.communityTopics.id))
+      .leftJoin(schema.communities, eq(schema.communityTopics.communityId, schema.communities.id));
     
     const conditions = [];
 
-    if (statusFilter === "drafts") {
-      conditions.push(eq(schema.essays.isPublic, false));
-      conditions.push(eq(schema.essays.isAnalyzed, false));
-    } else if (statusFilter === "analyzed") {
-      conditions.push(eq(schema.essays.isAnalyzed, true));
-    } else {
-      if (isPublic !== undefined) {
-        conditions.push(eq(schema.essays.isPublic, isPublic));
-      }
+    // --- Lógica de Filtros ---
+
+    if (topicId) {
+      conditions.push(eq(schema.topicSubmissions.topicId, topicId));
     }
 
-    if (communityId && communityId !== "all") {
-      conditions.push(
-        exists(
-          this.db
-            .select({ id: schema.topicSubmissions.id })
-            .from(schema.topicSubmissions)
-            .innerJoin(
-              schema.communityTopics,
-              eq(schema.topicSubmissions.topicId, schema.communityTopics.id)
-            )
-            .where(and(
-              eq(schema.topicSubmissions.essayId, schema.essays.id),
-              eq(schema.communityTopics.communityId, communityId)
-            ))
-        )
-      );
+    if (communityId) {
+      if (communityId === "all") {
+        conditions.push(isNotNull(schema.communities.id));
+      } else {
+        conditions.push(eq(schema.communities.id, communityId));
+      }
     }
 
     if (authorId) {
       conditions.push(eq(schema.essays.authorId, authorId));
+      
+    } 
+    else if (isPublic !== undefined) {
+      conditions.push(eq(schema.essays.isPublic, isPublic));
     }
+
+    if (statusFilter === "drafts") {
+      conditions.push(eq(schema.essays.isPublic, false));
+      conditions.push(eq(schema.essays.isAnalyzed, false));
+      conditions.push(isNull(schema.communities.id));
+    } else if (statusFilter === "analyzed") {
+      conditions.push(eq(schema.essays.isAnalyzed, true));
+    } else if (statusFilter === "submitted") {
+      conditions.push(isNotNull(schema.topicSubmissions.id));
+    }
+
     if (cursor) {
       conditions.push(lt(schema.essays.createdAt, cursor));
     }
@@ -114,9 +131,12 @@ export class EssayDbStore implements IEssayStore {
       .limit(limit)
       .orderBy(desc(schema.essays.createdAt));
     
-    return rows.map(({ essay, profileDisplayName }) => ({
-      ...essay,
-      authorName: profileDisplayName || essay.authorName || "Anonymous"
+    return rows.map((row) => ({
+      ...row.essay,
+      authorName: row.profileDisplayName || row.essay.authorName || "Anonymous",
+      communityId: row.communityId,
+      communityName: row.communityName,
+      topicTitle: row.topicTitle
     }));
   }
 

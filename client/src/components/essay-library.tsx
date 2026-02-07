@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Edit, Share, Check, Clock, Globe, FileText, Eye, Trash2, Users, Loader2 } from "lucide-react";
+import { Search, Plus, Edit, Share, Check, Clock, Globe, FileText, Eye, Trash2, Users, Loader2, Archive } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Link } from "wouter";
-import { type Essay, type TopicSubmission } from "@shared/schema";
+import { type Essay, type Community, type CommunityMember } from "@shared/schema";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,45 +33,49 @@ interface EssayLibraryProps {
   onEditEssay?: (essayId: string) => void;
 }
 
-interface EnrichedSubmission extends TopicSubmission {
-  topicTitle: string;
-  communityId: string | null;
-  communityName: string;
+interface EnrichedEssay extends Essay {
+  communityId?: string | null;
+  communityName?: string | null;
+  topicTitle?: string | null;
 }
 
 interface EssayPage {
-  data: Essay[];
+  data: EnrichedEssay[];
   nextCursor: string | null;
+}
+
+interface UserCommunityResponse extends CommunityMember {
+  community: Community;
 }
 
 export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
   const [activeFilter, setActiveFilter] = useState("all");
   const [communityFilter, setCommunityFilter] = useState<string>("all");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: submissions = [] } = useQuery<EnrichedSubmission[]>({
-    queryKey: ["/api/user/submissions"],
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data: userCommunities = [] } = useQuery<UserCommunityResponse[]>({
+    queryKey: ["/api/user/communities"],
     enabled: !!user?.id,
   });
 
-  const essaySubmissionMap = useMemo(() => {
-    const map = new Map<string, EnrichedSubmission>();
-    submissions.forEach((sub) => {
-      map.set(sub.essayId, sub);
-    });
-    return map;
-  }, [submissions]);
-
-  const communities = useMemo(() => {
-    return Array.from(
-      new Set(submissions.filter(s => s.communityId).map(s => JSON.stringify({ id: s.communityId, name: s.communityName })))
-    ).map(s => JSON.parse(s) as { id: string; name: string });
-  }, [submissions]);
+  const communitiesList = useMemo(() => {
+    return userCommunities.map(uc => uc.community);
+  }, [userCommunities]);
 
   const { 
     data, 
@@ -80,23 +84,21 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
     isFetchingNextPage, 
     isLoading 
   } = useInfiniteQuery<EssayPage>({
-    queryKey: [`/api/essays`, user?.id, searchQuery, activeFilter, communityFilter], 
+    queryKey: [`/api/essays`, user?.id, debouncedSearch, activeFilter, communityFilter], 
     
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
+      
       params.append("authorId", user?.id || "");
       
       if (pageParam) params.append("cursor", pageParam as string);
-      
-      if (searchQuery) params.append("q", searchQuery);
+      if (debouncedSearch) params.append("q", debouncedSearch);
       
       if (activeFilter === "drafts") {
          params.append("status", "drafts");
       } else if (activeFilter === "analyzed") {
          params.append("status", "analyzed");
-      }
-      
-      if (activeFilter === "communities" && communityFilter !== "all") {
+      } else if (activeFilter === "communities") {
          params.append("communityId", communityFilter);
       }
 
@@ -118,7 +120,6 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/essays`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/submissions"] });
       toast({
         title: t('library.toast.deleted_title'),
         description: t('library.toast.deleted_desc'),
@@ -141,14 +142,14 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       const updatedEssay = await response.json();
       
       queryClient.setQueryData(
-        [`/api/essays`, user?.id, searchQuery, activeFilter, communityFilter], 
+        [`/api/essays`, user?.id, debouncedSearch, activeFilter, communityFilter], 
         (oldData: any) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
             pages: oldData.pages.map((page: EssayPage) => ({
               ...page,
-              data: page.data.map((e: Essay) => e.id === updatedEssay.id ? updatedEssay : e)
+              data: page.data.map((e: EnrichedEssay) => e.id === updatedEssay.id ? { ...e, ...updatedEssay } : e)
             }))
           };
       });
@@ -171,7 +172,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
     },
   });
 
-  const getStatusBadge = (essay: Essay) => {
+  const getStatusBadge = (essay: EnrichedEssay) => {
     if (essay.isPublic) {
       return (
         <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 text-xs rounded-full">
@@ -196,13 +197,12 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
     }
   };
 
-  const getCommunityBadge = (essay: Essay) => {
-    const submission = essaySubmissionMap.get(essay.id);
-    if (submission) {
+  const getCommunityBadge = (essay: EnrichedEssay) => {
+    if (essay.communityName) {
       return (
         <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100 text-xs rounded-full">
           <Users className="w-3 h-3 mr-1 inline" />
-          {submission.communityName}
+          {essay.communityName}
         </span>
       );
     }
@@ -253,45 +253,47 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       </div>
 
       {/* Filter Tabs */}
-      <div className="grid grid-cols-4 gap-1 bg-muted rounded-lg p-1 mb-6 w-fit">
-        {[
-          { key: "all", label: t('library.filters.all') },
-          { key: "drafts", label: t('library.filters.drafts') },
-          { key: "communities", label: t('library.filters.communities') },
-          { key: "analyzed", label: t('library.filters.analyzed') },
-        ].map((filter) => (
-          <Button
-            key={filter.key}
-            variant={activeFilter === filter.key ? "default" : "ghost"}
-            size="sm"
-            onClick={() => {
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="flex sm:flex-nowrap justify-between gap-1 bg-muted rounded-lg p-1 mb-6 w-full sm:w-fit">
+          {[
+            { key: "all", label: t('library.filters.all') },
+            { key: "drafts", label: t('library.filters.drafts') },
+            { key: "communities", label: t('library.filters.communities') },
+            { key: "analyzed", label: t('library.filters.analyzed') },
+          ].map((filter) => (
+            <Button
+              key={filter.key}
+              variant={activeFilter === filter.key ? "default" : "ghost"}
+              size="sm"
+              onClick={() => {
                 setActiveFilter(filter.key);
                 if (filter.key !== "communities") {
                   setCommunityFilter("all");
                 }
               }}
-            className={activeFilter === filter.key ? "shadow-sm" : ""}
-            data-testid={`filter-${filter.key}`}
-          >
-            {filter.label}
-          </Button>
-        ))}
-      </div>
+              className={`${activeFilter === filter.key ? "shadow-sm" : ""} px-0 sm:px-3`}
+              data-testid={`filter-${filter.key}`}
+            >
+              {filter.label}
+            </Button>
+          ))}
+        </div>
         
-        {/* Community dropdown filter - shown when Communities tab is active */}
-        {activeFilter === "communities" && communities.length > 0 && (
+        {/* Dropdown de filtro por comunidade (Aparece apenas na aba Communities) */}
+        {activeFilter === "communities" && communitiesList.length > 0 && (
           <Select value={communityFilter} onValueChange={setCommunityFilter}>
             <SelectTrigger className="w-[200px]" data-testid="select-community-filter">
               <SelectValue placeholder={t('library.community_filter.placeholder')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('library.community_filter.all')}</SelectItem>
-              {communities.map((c) => (
+              {communitiesList.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
+      </div>
 
       {/* Essays Grid */}
       {allEssays.length === 0 ? (
@@ -318,7 +320,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {allEssays.map((essay: Essay) => (
+            {allEssays.map((essay: EnrichedEssay) => (
               <Card key={essay.id} className="hover:shadow-md transition-shadow" data-testid={`essay-card-${essay.id}`}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-3">
@@ -326,19 +328,28 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                       {essay.title}
                     </h3>
                     <div className="flex items-center space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto p-1"
-                        onClick={() => togglePublishMutation.mutate({
-                          essayId: essay.id,
-                          isPublic: !essay.isPublic
-                        })}
-                        disabled={togglePublishMutation.isPending}
-                        data-testid={`button-share-${essay.id}`}
-                      >
-                        <Share className="w-4 h-4" />
-                      </Button>
+                      {essay.communityId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-1"
+                          onClick={() => togglePublishMutation.mutate({
+                            essayId: essay.id,
+                            isPublic: !essay.isPublic
+                          })}
+                          disabled={togglePublishMutation.isPending}
+                          data-testid={`button-toggle-public-${essay.id}`}
+                          title={essay.isPublic 
+                            ? t('library.card.archive_tooltip', 'Arquivar (Tornar Privado)') 
+                            : t('library.card.publish_tooltip', 'Tornar Público na Comunidade')}
+                        >
+                          {essay.isPublic ? (
+                            <Archive className="w-4 h-4 text-muted-foreground hover:text-orange-500 transition-colors" />
+                          ) : (
+                            <Globe className="w-4 h-4 text-muted-foreground hover:text-blue-500 transition-colors" />
+                          )}
+                        </Button>
+                      )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -380,35 +391,28 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                     <span>{t('library.card.words', { count: essay.wordCount })}</span>
                   </div>
                   
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {getStatusBadge(essay)}
-                    {getCommunityBadge(essay)}
-                  </div>
-                  
-                  <div className="flex items-center justify-end">
-                    {essay.isAnalyzed ? (
-                      <Link href={`/essay/${essay.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          data-testid={`button-view-${essay.id}`}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          {t('library.card.view')}
+                  <div className="flex items-center justify-between mt-auto">
+                  {/* Badges na esquerda com wrap para segurança */}
+                    <div className="flex flex-wrap gap-2">
+                      {getStatusBadge(essay)}
+                      {getCommunityBadge(essay)}
+                    </div>
+
+                    {/* Botão de Ação na direita */}
+                    <div>
+                      {essay.isAnalyzed ? (
+                        <Link href={`/essay/${essay.id}`}>
+                          <Button variant="secondary" size="sm">
+                            <Eye className="w-4 h-4 mr-1" /> {t('library.card.view')}
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => onEditEssay?.(essay.id)}>
+                          <Edit className="w-4 h-4 mr-1" /> {t('library.card.edit')}
                         </Button>
-                      </Link>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEditEssay?.(essay.id)}
-                        data-testid={`button-edit-${essay.id}`}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        {t('library.card.edit')}
-                      </Button>
-                    )}
+                      )}
                   </div>
+                </div>
                 </CardContent>
               </Card>
             ))}

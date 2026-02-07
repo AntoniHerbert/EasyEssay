@@ -1,16 +1,14 @@
 import { 
   CreateEssayInput,
-  insertEssaySchema, 
   UpdateEssayInput, 
-  type InsertEssay 
 } from "@shared/schema";
 import type { IEssayStore } from "../storage/essays/essay.store";
 import type { IProfileStore } from "../storage/profiles/profile.store";
 import type { ITransactionManager } from "../storage/transaction";
 import type { IPeerReviewStore } from "../storage/peerReviews/peerReview.store";
 import type { IEssayLikeStore } from "../storage/essayLikes/essayLike.store"; 
+import type { ICommunityStore } from "../storage/community/community.store";
 import type { AiService } from "./ai.service";
-import { z } from "zod";
 
 export class EssayService {
 
@@ -20,6 +18,7 @@ export class EssayService {
     private aiService: AiService,
     private peerReviewStore: IPeerReviewStore,
     private essayLikeStore: IEssayLikeStore,
+    private communityStore: ICommunityStore,
     private txManager: ITransactionManager 
   ) {}
 
@@ -30,15 +29,39 @@ export class EssayService {
     cursorStr?: string,
     excludeAuthorId?: string,
     searchQuery?: string,
-    statusFilter?: "drafts" | "analyzed" | "all",
-    communityId?: string
+    statusFilter?: "drafts" | "analyzed" | "all" | "submitted",
+    communityId?: string,
+    topicId?: string 
   ) {
-    let isPublic = isPublicString === "true" ? true : isPublicString === "false" ? false : undefined;
+
+    let isPublic: boolean | undefined = true;
+    
+    if (isPublicString === "false") isPublic = false;
+    if (isPublicString === "true") isPublic = true;
     
     const isViewingOwnProfile = authorIdFilter && authorIdFilter === requestingUserId;
     
-    if (!isViewingOwnProfile) {
-      isPublic = true;
+    if (isViewingOwnProfile) {
+      isPublic = undefined;
+    }
+
+    if (requestingUserId && (topicId || (communityId && communityId !== "all"))) {
+      let hasAccess = false;
+
+      if (topicId) {
+        const topic = await this.communityStore.getTopicById(topicId);
+        if (topic) {
+          const membership = await this.communityStore.getMember(topic.communityId, requestingUserId);
+          if (membership) hasAccess = true;
+        }
+      } else if (communityId) {
+        const membership = await this.communityStore.getMember(communityId, requestingUserId);
+        if (membership) hasAccess = true;
+      }
+
+      if (hasAccess) {
+        isPublic = undefined;
+      }
     }
 
     let cursorDate: Date | undefined;
@@ -58,7 +81,8 @@ export class EssayService {
       excludeAuthorId, 
       safeSearch,
       statusFilter,
-      communityId 
+      communityId,
+      topicId
     );
 
     let nextCursor: string | null = null;
@@ -80,8 +104,22 @@ export class EssayService {
       return null; 
     }
 
-    if (!essay.isPublic && essay.authorId !== requestingUserId) {
-      throw new Error("FORBIDDEN_ACCESS");
+    const isAuthor = essay.authorId === requestingUserId;
+    const isPublic = essay.isPublic;
+
+    if (!isPublic && !isAuthor) {
+      let hasCommunityAccess = false;
+
+      if (essay.communityId) {
+        const membership = await this.communityStore.getMember(essay.communityId, requestingUserId);
+        if (membership) {
+          hasCommunityAccess = true;
+        }
+      }
+
+      if (!hasCommunityAccess) {
+        throw new Error("FORBIDDEN_ACCESS");
+      }
     }
 
     return essay;

@@ -1,5 +1,5 @@
 import { type Essay, type InsertEssay, type RubricCategory } from "@shared/schema";
-import { IEssayStore } from "./essay.store";
+import { IEssayStore, type EnrichedEssay } from "./essay.store";
 import { randomUUID } from "crypto";
 import { type Tx } from "../types";
 
@@ -10,8 +10,16 @@ export class EssayMemStore implements IEssayStore {
     this.essays = new Map();
   }
 
-  async getEssay(id: string): Promise<Essay | undefined> {
-    return this.essays.get(id);
+  async getEssay(id: string): Promise<EnrichedEssay | undefined> {
+    const essay = this.essays.get(id);
+    if (!essay) return undefined;
+
+    return {
+      ...essay,
+      communityId: null,
+      communityName: null,
+      topicTitle: null
+    };
   }
 
   async getEssays(
@@ -21,9 +29,10 @@ export class EssayMemStore implements IEssayStore {
     cursor?: Date, 
     excludeAuthorId?: string,
     searchQuery?: string,
-    statusFilter?: "drafts" | "analyzed" | "all",
-    communityId?: string
-  ): Promise<Essay[]> {
+    statusFilter?: "drafts" | "analyzed" | "all" | "submitted",
+    communityId?: string,
+    topicId?: string
+  ): Promise<EnrichedEssay[]> {
     let allEssays = Array.from(this.essays.values());
 
     allEssays = allEssays.filter(essay => {
@@ -31,6 +40,9 @@ export class EssayMemStore implements IEssayStore {
         if (essay.isPublic || essay.isAnalyzed) return false;
       } else if (statusFilter === "analyzed") {
         if (!essay.isAnalyzed) return false;
+      } else if (statusFilter === "submitted") {
+
+        return false; 
       } else {
         if (isPublic !== undefined && essay.isPublic !== isPublic) return false;
       }
@@ -38,6 +50,9 @@ export class EssayMemStore implements IEssayStore {
       if (authorId && essay.authorId !== authorId) return false;
       if (excludeAuthorId && essay.authorId === excludeAuthorId) return false;
       
+      if (communityId && communityId !== "all") return false; 
+      if (topicId) return false;
+
       if (cursor && essay.createdAt >= cursor) return false;
 
       if (searchQuery) {
@@ -50,9 +65,16 @@ export class EssayMemStore implements IEssayStore {
       return true;
     });
 
-    return allEssays
+    const sliced = allEssays
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
+
+    return sliced.map(essay => ({
+      ...essay,
+      communityId: null,
+      communityName: null,
+      topicTitle: null
+    }));
   }
 
   async createEssay(insertEssay: InsertEssay, _tx?: Tx): Promise<Essay> {
@@ -85,6 +107,10 @@ export class EssayMemStore implements IEssayStore {
         ? (updates.rubric ? (updates.rubric as RubricCategory[]) : null)
         : essay.rubric,
     };
+    
+    if ((updates as any).rubric === undefined) {
+    }
+
     this.essays.set(id, updatedEssay);
     return updatedEssay;
   }

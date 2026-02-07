@@ -8,7 +8,7 @@ import { isAuthenticated } from "./middlewares/isAuthenticated";
 const router = Router();
 
 // =================================================================
-// 🔒 Rotas Protegidas
+// 🔒 Protected Routes
 // =================================================================
 
 router.use(isAuthenticated);
@@ -21,7 +21,8 @@ router.get("/", catchAsync(async (req, res) => {
     excludeAuthorId, 
     q,
     status,       
-    communityId   
+    communityId,
+    topicId
   } = req.query;
 
   const essays = await essayService.getEssays(
@@ -31,8 +32,9 @@ router.get("/", catchAsync(async (req, res) => {
     cursor as string,
     excludeAuthorId as string,
     q as string,
-    status as "drafts" | "analyzed" | "all", 
-    communityId as string                    
+    status as "drafts" | "analyzed" | "all" | "submitted", 
+    communityId as string,
+    topicId as string
   );
   res.json(essays);
 }));
