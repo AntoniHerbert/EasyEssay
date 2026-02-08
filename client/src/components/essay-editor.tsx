@@ -123,7 +123,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     return parts;
   };
 
-useEffect(() => {
+  useEffect(() => {
     if (!essayId && !essay && !templateDismissed) {
       const storedTemplate = localStorage.getItem("selectedTemplate");
       let dataTitle = source === 'explore' ? "" : prefillTitle;
@@ -379,7 +379,7 @@ useEffect(() => {
         if (source === 'explore') {
             setLocation('/?section=explore');
         } else {
-            setLocation(`/?section=community&communityId=${communityId}&topicId=${topicId}`);
+            setLocation(`/?section=community&communityId=${communityId}`);
         }
       }, 1000);
     } catch (error) {
@@ -397,7 +397,7 @@ useEffect(() => {
     if (source === 'explore') {
         setLocation('/?section=explore');
     } else {
-        setLocation(`/?section=community&communityId=${communityId}&topicId=${topicId}`);
+        setLocation(`/?section=community&communityId=${communityId}`);
     }
   };
 

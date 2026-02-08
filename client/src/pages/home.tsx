@@ -26,14 +26,31 @@ export default function Home() {
   const sectionParam = searchParams.get("section");
   const navTimestamp = searchParams.get("t");
 
-  useEffect(() => {
-    if (sectionParam === "community") {
-      setActiveSection("community");
-    } else if (sectionParam === "write") {
-      setEditingEssayId("");
+useEffect(() => {
+    if (topicId) {
       setActiveSection("write");
-    } else if (topicId) {
-      setActiveSection("write");
+      return; 
+    }
+
+    if (sectionParam) {
+      switch (sectionParam) {
+        case "community":
+          setActiveSection("community");
+          break;
+        case "explore":
+          setActiveSection("explore");
+          break;
+        case "library":
+          setActiveSection("library");
+          break;
+        case "profile":
+          setActiveSection("profile");
+          break;
+        case "write":
+          setEditingEssayId("");
+          setActiveSection("write");
+          break;
+      }
     }
   }, [topicId, sectionParam, navTimestamp]);
 
