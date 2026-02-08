@@ -62,6 +62,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const searchParams = new URLSearchParams(searchString);
   const topicId = searchParams.get("topicId");
   const communityId = searchParams.get("communityId");
+  const source = searchParams.get("source"); 
   const prefillTitle = searchParams.get("title");
   const prefillContent = searchParams.get("content");
   const prompt = searchParams.get("prompt");
@@ -346,7 +347,11 @@ useEffect(() => {
       });
 
       setTimeout(() => {
-        setLocation(`/?section=community&communityId=${communityId}&topicId=${topicId}`);
+        if (source === 'explore') {
+            setLocation('/?section=explore');
+        } else {
+            setLocation(`/?section=community&communityId=${communityId}&topicId=${topicId}`);
+        }
       }, 1000);
     } catch (error) {
       toast({
@@ -359,6 +364,14 @@ useEffect(() => {
     }
   };
 
+  const handleBack = () => {
+    if (source === 'explore') {
+        setLocation('/?section=explore');
+    } else {
+        setLocation(`/?section=community&communityId=${communityId}&topicId=${topicId}`);
+    }
+  };
+
   return (
     <Card className="rounded-xl shadow-sm border border-border overflow-hidden">
       {topicId && topic && (
@@ -367,7 +380,7 @@ useEffect(() => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setLocation(`/?section=community&communityId=${communityId}&topicId=${topicId}`)}
+              onClick={handleBack}
               data-testid="button-back-to-topic"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />

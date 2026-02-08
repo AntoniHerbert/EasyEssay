@@ -21,6 +21,7 @@ const handleUseTopic = (item: ExploreItem, utils: Pick<PluginUtils, "navigate" |
   params.set("section", "write");
   params.set("t", Date.now().toString());
   params.set("title", item.title);
+  params.set("source", "explore");
   if (payload.description) {
     params.set("prompt", payload.description);
   }
