@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Heart, MessageCircle, Bookmark, Users, Clock, BookOpen, UserPlus, Plus, Crown, LogOut, FileText, Calendar, ChevronRight, ArrowLeft, Search, Copy, Check, Lock, Globe, UserCheck, UserX, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/auth-context";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface CommunityWithMembership extends Community {
   isMember?: boolean;
@@ -123,24 +124,26 @@ export function CommunityFeed() {
   const [, setLocation] = useLocation();
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
-   
+    
   const [activeTab, setActiveTab] = useState("essays");
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [selectedTopicView, setSelectedTopicView] = useState<CommunityTopic | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createTopicDialogOpen, setCreateTopicDialogOpen] = useState(false);
-   
+    
   const [newCommunityName, setNewCommunityName] = useState("");
   const [newCommunityDescription, setNewCommunityDescription] = useState("");
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicDeadline, setNewTopicDeadline] = useState("");
   const [newCommunityIsPublic, setNewCommunityIsPublic] = useState(true);
-   
+    
   const [communitySearch, setCommunitySearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(""); 
+  
+  const debouncedSearch = useDebounce(communitySearch, 500);
+  
   const [communityFilter, setCommunityFilter] = useState<'all' | 'member'>('all');
-   
+    
   const [codeCopied, setCodeCopied] = useState(false);
   const [transferLeadershipDialogOpen, setTransferLeadershipDialogOpen] = useState(false);
   const [selectedNewLeader, setSelectedNewLeader] = useState<string | null>(null);
@@ -148,12 +151,6 @@ export function CommunityFeed() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(communitySearch);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [communitySearch]);
 
   const { 
     data: essaysData, 
