@@ -52,6 +52,7 @@ export const essays = pgTable("essays", {
   authorName: text("author_name").notNull(),
   wordCount: integer("word_count").notNull().default(0),
   isPublic: boolean("is_public").notNull().default(false),
+  essayType: text("essay_type"),
   isAnalyzed: boolean("is_analyzed").notNull().default(false),
   rubric: jsonb("rubric").$type<RubricCategory[]>(),
   rubricName: text("rubric_name"),
@@ -540,6 +541,7 @@ export interface EnrichedEssay extends Essay {
   communityId: string | null;
   communityName: string | null;
   topicTitle: string | null;
+  source: "community" | "explore" | null;
 }
 
 export type ExploreItem = typeof exploreItems.$inferSelect;

@@ -288,6 +288,15 @@ useEffect(() => {
       return;
     }
 
+    if (!selectedEssayType) {
+      toast({
+        title: t('editor.toast.content_req_title'),
+        description: t('editor.toast.type_required_desc'),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsAnalyzing(true);
 
     try {
@@ -302,7 +311,7 @@ useEffect(() => {
         isPublic: false,
         rubric,
         rubricName,
-        essayType: selectedEssayType || null,
+        essayType: selectedEssayType,
       };
       
       if (!currentEssayId) {
@@ -331,6 +340,15 @@ useEffect(() => {
       return;
     }
 
+    if (!selectedEssayType) {
+      toast({
+        title: t('editor.toast.content_req_title'),
+        description: t('editor.toast.type_required_desc'),
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!topicId) return;
 
     setIsSubmittingToTopic(true);
@@ -343,6 +361,7 @@ useEffect(() => {
       await apiRequest("POST", endpoint, {
         title: title || t('editor.untitled'),
         content: finalContent,
+        essayType: selectedEssayType,
       });
       
       queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
@@ -405,7 +424,7 @@ useEffect(() => {
           </div>
           <Button
             onClick={handleSubmitToTopic}
-            disabled={isSubmittingToTopic || !title.trim() || !(templateMode ? buildContentFromTemplate : content).trim()}
+            disabled={isSubmittingToTopic || !selectedEssayType || !title.trim() || !(templateMode ? buildContentFromTemplate : content).trim()}
             data-testid="button-submit-to-topic"
           >
             {isSubmittingToTopic ? t('editor.submitting') : t('editor.submit_topic')}
@@ -534,7 +553,7 @@ useEffect(() => {
             <Button
               size="sm"
               onClick={handleAnalyze}
-              disabled={isAnalyzing || !(templateMode ? buildContentFromTemplate : content).trim()}
+              disabled={isAnalyzing || !selectedEssayType || !(templateMode ? buildContentFromTemplate : content).trim()}
               data-testid="button-analyze"
             >
               <Wand2 className="w-4 h-4 mr-2" />

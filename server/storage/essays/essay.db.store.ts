@@ -9,6 +9,7 @@ export interface EnrichedEssay extends Essay {
   communityId: string | null;
   communityName: string | null;
   topicTitle: string | null;
+  source: 'community' | 'explore' | null;
 }
 
 export class EssayDbStore implements IEssayStore {
@@ -25,7 +26,8 @@ export class EssayDbStore implements IEssayStore {
         profileDisplayName: schema.userProfiles.displayName,
         communityId: schema.communities.id,
         communityName: schema.communities.name,
-        topicTitle: schema.communityTopics.title
+        topicTitle: schema.communityTopics.title,
+        submissionSource: schema.topicSubmissions.source
       })
       .from(schema.essays)
       .leftJoin(schema.userProfiles, eq(schema.essays.authorId, schema.userProfiles.userId))
@@ -42,7 +44,8 @@ export class EssayDbStore implements IEssayStore {
       authorName: row.profileDisplayName || row.essay.authorName || "Anonymous",
       communityId: row.communityId,
       communityName: row.communityName,
-      topicTitle: row.topicTitle
+      topicTitle: row.topicTitle,
+      source: (row.submissionSource as "community" | "explore" | null) || null
     };
   }
 
@@ -64,7 +67,8 @@ export class EssayDbStore implements IEssayStore {
         profileDisplayName: schema.userProfiles.displayName,
         communityId: schema.communities.id,
         communityName: schema.communities.name,
-        topicTitle: schema.communityTopics.title
+        topicTitle: schema.communityTopics.title,
+        submissionSource: schema.topicSubmissions.source
       })
       .from(schema.essays)
       .leftJoin(schema.userProfiles, eq(schema.essays.authorId, schema.userProfiles.userId))
@@ -77,7 +81,10 @@ export class EssayDbStore implements IEssayStore {
     // --- Lógica de Filtros ---
 
     if (topicId) {
-      conditions.push(eq(schema.topicSubmissions.topicId, topicId));
+      conditions.push(or(
+        eq(schema.topicSubmissions.topicId, topicId),
+        eq(schema.topicSubmissions.exploreContentId, topicId)
+      ));
     }
 
     if (communityId) {
@@ -90,7 +97,6 @@ export class EssayDbStore implements IEssayStore {
 
     if (authorId) {
       conditions.push(eq(schema.essays.authorId, authorId));
-      
     } 
     else if (isPublic !== undefined) {
       conditions.push(eq(schema.essays.isPublic, isPublic));
@@ -99,7 +105,7 @@ export class EssayDbStore implements IEssayStore {
     if (statusFilter === "drafts") {
       conditions.push(eq(schema.essays.isPublic, false));
       conditions.push(eq(schema.essays.isAnalyzed, false));
-      conditions.push(isNull(schema.communities.id));
+      conditions.push(isNull(schema.topicSubmissions.id));
     } else if (statusFilter === "analyzed") {
       conditions.push(eq(schema.essays.isAnalyzed, true));
     } else if (statusFilter === "submitted") {
@@ -136,7 +142,8 @@ export class EssayDbStore implements IEssayStore {
       authorName: row.profileDisplayName || row.essay.authorName || "Anonymous",
       communityId: row.communityId,
       communityName: row.communityName,
-      topicTitle: row.topicTitle
+      topicTitle: row.topicTitle,
+      source: (row.submissionSource as "community" | "explore" | null) || null
     }));
   }
 
@@ -163,9 +170,9 @@ export class EssayDbStore implements IEssayStore {
         : undefined,
     };
 
-    if (setValues.rubric === undefined) {
-      delete (setValues as any).rubric;
-    }
+    Object.keys(setValues).forEach(key => 
+      (setValues as any)[key] === undefined && delete (setValues as any)[key]
+    );
 
     const result = await executor
       .update(schema.essays)

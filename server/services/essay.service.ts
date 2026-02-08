@@ -165,11 +165,13 @@ export class EssayService {
       throw new Error("FORBIDDEN_ACCESS");
     }
   
+    const updates: Partial<UpdateEssayInput> & { wordCount?: number } = { ...data };
+
     if (data.content) {
-      data.wordCount = data.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+      updates.wordCount = data.content.trim().split(/\s+/).filter(word => word.length > 0).length;
     }
     
-    return await this.essayStore.updateEssay(essayId, data);
+    return await this.essayStore.updateEssay(essayId, updates);
   }
 
   async deleteEssay(essayId: string, requestingUserId: string) {
