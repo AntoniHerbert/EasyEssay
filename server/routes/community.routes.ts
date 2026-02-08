@@ -10,14 +10,12 @@ const router = Router();
 router.get("/communities", async (req, res) => {
   try {
     const { userId, limit, cursor, q } = req.query;
-
     const result = await communityService.getCommunities(
       userId as string,     
       limit as string,     
       cursor as string,     
       q as string            
     );
-    
     res.json(result);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch communities" });
@@ -330,7 +328,12 @@ router.post("/topics/:id/submissions", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
   try {
     const essayInput = insertEssaySchema.pick({ title: true, content: true }).parse(req.body);
-    const result = await communityService.createSubmission(req.session.userId, req.params.id, essayInput);
+    const result = await communityService.createSubmission(
+      req.session.userId, 
+      req.params.id, 
+      'community', 
+      essayInput
+    );
     res.status(201).json(result);
   } catch (error: any) {
     if (error.message === "TOPIC_CLOSED") return res.status(400).json({ message: "Topic closed" });
@@ -340,7 +343,28 @@ router.post("/topics/:id/submissions", async (req, res) => {
   }
 });
 
-// User stuff
+/**
+ * SUBMISSÃO PARA EXPLORE
+ */
+router.post("/explore/:contentId/submissions", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
+  try {
+    const essayInput = insertEssaySchema.pick({ title: true, content: true }).parse(req.body);
+    const result = await communityService.createSubmission(
+      req.session.userId, 
+      req.params.contentId, 
+      'explore', 
+      essayInput
+    );
+    res.status(201).json(result);
+  } catch (error: any) {
+    if (error.message === "ALREADY_SUBMITTED") return res.status(400).json({ message: "Already submitted" });
+    res.status(500).json({ message: "Failed to submit explore topic" });
+  }
+});
+
+// --- User stuff ---
+
 router.get("/user/communities", async (req, res) => {
     if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
     const result = await communityService.getUserCommunities(req.session.userId);

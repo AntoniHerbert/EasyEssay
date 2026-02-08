@@ -208,21 +208,39 @@ export class CommunityDbStore implements ICommunityStore {
 
   // --- Submissions ---
 
-  async getTopicSubmissions(topicId: string): Promise<TopicSubmission[]> {
+  /**
+   * Retrieves submissions for a given context ID.
+   */
+  async getTopicSubmissions(contextId: string, source: 'community' | 'explore' = 'community'): Promise<TopicSubmission[]> {
+    const whereCondition = source === 'community' 
+      ? eq(topicSubmissions.topicId, contextId)
+      : eq(topicSubmissions.exploreContentId, contextId);
+
     return await this.db
       .select()
       .from(topicSubmissions)
-      .where(eq(topicSubmissions.topicId, topicId))
+      .where(and(
+        whereCondition,
+        eq(topicSubmissions.source, source)
+      ))
       .orderBy(desc(topicSubmissions.createdAt));
   }
 
-  async getTopicSubmission(topicId: string, userId: string): Promise<TopicSubmission | undefined> {
+  /**
+   * Retrieves a specific submission by user for a context.
+   */
+  async getTopicSubmission(contextId: string, userId: string, source: 'community' | 'explore' = 'community'): Promise<TopicSubmission | undefined> {
+    const whereCondition = source === 'community' 
+      ? eq(topicSubmissions.topicId, contextId)
+      : eq(topicSubmissions.exploreContentId, contextId);
+
     const [result] = await this.db
       .select()
       .from(topicSubmissions)
       .where(and(
-        eq(topicSubmissions.topicId, topicId),
-        eq(topicSubmissions.userId, userId)
+        whereCondition,
+        eq(topicSubmissions.userId, userId),
+        eq(topicSubmissions.source, source)
       ));
     return result;
   }

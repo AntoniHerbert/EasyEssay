@@ -89,6 +89,7 @@ en: {
 },
 
 editor: {
+  topic_description: "Topic Description",
   header: "Essay Editor",
   save: "Save",
   words: "{{count}} words",
@@ -233,7 +234,9 @@ explore: {
     copied: "Copied!",
     copied_desc: "Quote copied to clipboard.",
     incomplete: "Incomplete",
-    incomplete_desc: "Please fill in all required fields."
+    incomplete_desc: "Please fill in all required fields.",
+    topic_loaded: "Topic loaded",
+    topic_loaded_desc: "Start writing your essay on this topic!"
   }
 }, 
 library: {
@@ -772,6 +775,7 @@ login: {
   enter_password: "Digite sua senha"
   },},
 editor: {
+  topic_description: "Descrição do Tópico",
   header: "Editor",
   words: "{{count}} palavras",
   analyze: "Analisar",
@@ -916,7 +920,9 @@ explore: {
     copied: "Copiado!",
     copied_desc: "Citação copiada para a área de transferência.",
     incomplete: "Incompleto",
-    incomplete_desc: "Por favor, preencha todos os campos obrigatórios." // Nova chave necessária
+    incomplete_desc: "Por favor, preencha todos os campos obrigatórios.",
+    topic_loaded: "Tópico carregado",
+    topic_loaded_desc: "Comece a escrever sua redação sobre este tópico!"
   }
 },
 library: {

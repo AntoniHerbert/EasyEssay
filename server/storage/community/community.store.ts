@@ -2,11 +2,10 @@ import { type Community, type InsertCommunity, type CommunityMember, type Insert
 import { type Tx } from "../types";
 
 export interface ICommunityStore {
-  // Atualizado para suportar filtros e paginação
   getCommunities(
     limit?: number,
     cursor?: Date,
-    userId?: string, // Filtro: "Minhas Comunidades"
+    userId?: string, 
     searchQuery?: string
   ): Promise<Community[]>;
 
@@ -16,7 +15,6 @@ export interface ICommunityStore {
   deleteCommunity(id: string, tx?: Tx): Promise<boolean>;
   updateMemberCount(communityId: string, delta: number, tx?: Tx): Promise<void>;
 
-  // ... (restante dos métodos de Members, Topics, etc. permanecem iguais)
   getCommunityMembers(communityId: string): Promise<CommunityMember[]>;
   getCommunityMember(communityId: string, userId: string): Promise<CommunityMember | undefined>;
   getUserCommunities(userId: string): Promise<CommunityMember[]>;
@@ -29,8 +27,9 @@ export interface ICommunityStore {
   createCommunityTopic(topic: InsertCommunityTopic, tx?: Tx): Promise<CommunityTopic>;
   updateCommunityTopic(id: string, updates: Partial<InsertCommunityTopic>, tx?: Tx): Promise<CommunityTopic | undefined>;
 
-  getTopicSubmissions(topicId: string): Promise<TopicSubmission[]>;
-  getTopicSubmission(topicId: string, userId: string): Promise<TopicSubmission | undefined>;
+  getTopicSubmissions(contextId: string, source?: 'community' | 'explore'): Promise<TopicSubmission[]>;
+  getTopicSubmission(contextId: string, userId: string, source?: 'community' | 'explore'): Promise<TopicSubmission | undefined>;
+  
   getUserSubmissions(userId: string): Promise<TopicSubmission[]>;
   createTopicSubmission(submission: InsertTopicSubmission, tx?: Tx): Promise<TopicSubmission>;
   markSubmissionReviewed(id: string, reviewerId: string, tx?: Tx): Promise<TopicSubmission | undefined>;

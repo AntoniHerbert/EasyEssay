@@ -370,15 +370,33 @@ export const communityTopics = pgTable('community_topics', {
 
 export const topicSubmissions = pgTable('topic_submissions', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
-  topicId: varchar('topic_id').notNull(),
-  essayId: varchar('essay_id').notNull(),
+  
+  essayId: varchar('essay_id').notNull(), 
   userId: varchar('user_id').notNull(),
   username: text('username').notNull(),
+
+  source: varchar('source', { length: 20 }).notNull().default('community'),
+
+  topicId: varchar('topic_id'), 
+
+  exploreContentId: varchar('explore_content_id'),
+
   isReviewed: boolean('is_reviewed').notNull().default(false),
   reviewedById: varchar('reviewed_by_id'),
   reviewedAt: timestamp('reviewed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const insertTopicSubmissionSchema = createInsertSchema(topicSubmissions).omit({
+  id: true,
+  createdAt: true,
+  isReviewed: true,
+  reviewedById: true,
+  reviewedAt: true,
+});
+
+export type TopicSubmission = typeof topicSubmissions.$inferSelect;
+export type InsertTopicSubmission = z.infer<typeof insertTopicSubmissionSchema>;
 
 export const joinRequests = pgTable('join_requests', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -409,14 +427,6 @@ export const insertCommunityTopicSchema = createInsertSchema(communityTopics).om
   updatedAt: true,
 });
 
-export const insertTopicSubmissionSchema = createInsertSchema(topicSubmissions).omit({
-  id: true,
-  createdAt: true,
-  isReviewed: true,
-  reviewedById: true,
-  reviewedAt: true,
-});
-
 export const insertJoinRequestSchema = createInsertSchema(joinRequests).omit({
   id: true,
   createdAt: true,
@@ -431,8 +441,6 @@ export type CommunityMember = typeof communityMembers.$inferSelect;
 export type InsertCommunityMember = z.infer<typeof insertCommunityMemberSchema>;
 export type CommunityTopic = typeof communityTopics.$inferSelect;
 export type InsertCommunityTopic = z.infer<typeof insertCommunityTopicSchema>;
-export type TopicSubmission = typeof topicSubmissions.$inferSelect;
-export type InsertTopicSubmission = z.infer<typeof insertTopicSubmissionSchema>;
 export type JoinRequest = typeof joinRequests.$inferSelect;
 export type InsertJoinRequest = z.infer<typeof insertJoinRequestSchema>;
 

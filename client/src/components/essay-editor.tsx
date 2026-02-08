@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { type Essay, type CommunityTopic, type RubricCategory, ESSAY_TYPES, type EssayType } from "@shared/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Wand2, ArrowLeft, X, ListChecks, LayoutTemplate } from "lucide-react";
+import { Save, Wand2, ArrowLeft, X, ListChecks, LayoutTemplate, Info } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -69,13 +69,16 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   
   const { data: topic } = useQuery<CommunityTopic>({
     queryKey: ["/api/topics", topicId],
-    enabled: !!topicId,
+    enabled: !!topicId && source !== 'explore',
   });
 
   const { data: essay } = useQuery({
     queryKey: [`/api/essays/${essayId}`],
     enabled: !!essayId,
   });
+
+  const topicDescription = source === 'explore' ? prompt : topic?.description;
+  const displayTopicTitle = source === 'explore' ? prefillTitle : topic?.title;
 
   useEffect(() => {
     if (essay && typeof essay === 'object' && 'title' in essay && 'content' in essay) {
@@ -333,13 +336,20 @@ useEffect(() => {
     setIsSubmittingToTopic(true);
 
     try {
-      await apiRequest("POST", `/api/topics/${topicId}/submissions`, {
+      const endpoint = source === 'explore' 
+        ? `/api/explore/${topicId}/submissions` 
+        : `/api/topics/${topicId}/submissions`;
+
+      await apiRequest("POST", endpoint, {
         title: title || t('editor.untitled'),
         content: finalContent,
       });
       
       queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/topics", topicId, "submissions"] });
+      
+      if (source !== 'explore') {
+        queryClient.invalidateQueries({ queryKey: ["/api/topics", topicId, "submissions"] });
+      }
       
       toast({
         title: t('editor.toast.submitted_title'),
@@ -374,7 +384,7 @@ useEffect(() => {
 
   return (
     <Card className="rounded-xl shadow-sm border border-border overflow-hidden">
-      {topicId && topic && (
+      {topicId && (source === 'explore' || topic) && (
         <div className="p-3 bg-primary/5 border-b border-primary/20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button 
@@ -388,7 +398,9 @@ useEffect(() => {
             </Button>
             <div>
               <span className="text-sm text-muted-foreground">{t('editor.topic_context')}</span>
-              <Badge variant="secondary" className="ml-2">{topic.title}</Badge>
+              <Badge variant="secondary" className="ml-2">
+                {displayTopicTitle || t('explore.topic')}
+              </Badge>
             </div>
           </div>
           <Button
@@ -400,6 +412,22 @@ useEffect(() => {
           </Button>
         </div>
       )}
+
+      {/* BANNER DE DESCRIÇÃO DO TÓPICO UNIFICADO */}
+      {topicDescription && (
+        <div className="px-6 py-3 bg-muted/30 border-b border-border flex items-start gap-3">
+          <Info className="w-4 h-4 mt-0.5 text-primary/60" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+              {t('editor.topic_description')}
+            </p>
+            <p className="text-sm text-foreground/80 leading-relaxed italic">
+              "{topicDescription}"
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h2 className="text-lg font-semibold">{t('editor.header')}</h2>
         <Select 

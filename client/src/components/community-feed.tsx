@@ -524,9 +524,8 @@ export function CommunityFeed() {
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-4">
                           <Avatar>
-                            <AvatarImage src= {getInitials(essay.authorName || "User")} alt={essay.authorName} />
                             <AvatarFallback>
-                          {    getInitials(essay.authorName || "User")}
+                             {essay.authorName ? essay.authorName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
                             </AvatarFallback>
                           </Avatar>
                     
@@ -986,7 +985,7 @@ export function CommunityFeed() {
                             data-testid={`select-new-leader-${member.userId}`}
                           >
                             <Avatar className="w-8 h-8">
-                              <AvatarFallback>{member.username[0].toUpperCase()}</AvatarFallback>
+                              <AvatarFallback>{member.username ? member.username.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <p className="font-medium">{member.username}</p>
@@ -1065,7 +1064,7 @@ export function CommunityFeed() {
                     <div key={request.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg" data-testid={`join-request-${request.id}`}>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback>{request.username.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback>{request.username ? request.username.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'}</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">{request.username}</p>
@@ -1477,7 +1476,6 @@ export function CommunityFeed() {
                               data-testid={`not-submitted-${member.userId}`}
                             >
                               <Avatar className="w-5 h-5">
-                                <AvatarImage src={getAvatarImage(member.username)} alt={member.username} />
                                 <AvatarFallback className="text-xs">{member.username[0].toUpperCase()}</AvatarFallback>
                               </Avatar>
                               <span className="text-sm">{member.username}</span>
@@ -1559,7 +1557,6 @@ export function CommunityFeed() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src={getAvatarImage(submission.username)} alt={submission.username} />
                           <AvatarFallback>{submission.username[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">

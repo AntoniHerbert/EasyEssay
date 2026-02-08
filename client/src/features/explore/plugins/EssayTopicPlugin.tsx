@@ -18,18 +18,26 @@ const colorClass = "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-20
 const handleUseTopic = (item: ExploreItem, utils: Pick<PluginUtils, "navigate" | "toast">) => {
   const payload = item.payload as EssayTopicPayload;
   const params = new URLSearchParams();
+  
   params.set("section", "write");
   params.set("t", Date.now().toString());
   params.set("title", item.title);
+  
+  params.set("topicId", item.id);
+  
   params.set("source", "explore");
+
   if (payload.description) {
     params.set("prompt", payload.description);
   }
+
   localStorage.removeItem("selectedRubric");
+  
   utils.toast({
     title: i18n.t('explore.toast.topic_loaded'),
     description: i18n.t('explore.toast.topic_loaded_desc'),
   });
+  
   utils.navigate("/?" + params.toString());
 };
 

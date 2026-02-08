@@ -292,8 +292,6 @@ export class CommunityService {
       createdById: userId,
       createdByName: profile?.displayName || "Unknown"
     });
-
-    
   }
 
   async updateTopic(topicId: string, userId: string, updates: Partial<InsertCommunityTopic>) {
@@ -306,14 +304,17 @@ export class CommunityService {
     return this.store.updateCommunityTopic(topicId, updates);
   }
 
-  async getTopicSubmissions(topicId: string) {
-    const submissions = await this.store.getTopicSubmissions(topicId);
-    const topic = await this.store.getCommunityTopic(topicId);
+  async getTopicSubmissions(contextId: string, source: 'community' | 'explore' = 'community') {
+    const submissions = await this.store.getTopicSubmissions(contextId, source);
     
     let leaderId: string | null = null;
-    if (topic) {
-        const community = await this.store.getCommunity(topic.communityId);
-        leaderId = community?.leaderId || null;
+
+    if (source === 'community') {
+        const topic = await this.store.getCommunityTopic(contextId);
+        if (topic) {
+            const community = await this.store.getCommunity(topic.communityId);
+            leaderId = community?.leaderId || null;
+        }
     }
 
     return Promise.all(submissions.map(async (sub) => {
@@ -333,38 +334,61 @@ export class CommunityService {
     }));
   }
 
-  async createSubmission(userId: string, topicId: string, essayData: { title: string, content: string }) {
-    const topic = await this.store.getCommunityTopic(topicId);
-    if (!topic) throw new Error("NOT_FOUND");
-    if (!topic.isActive) throw new Error("TOPIC_CLOSED");
+  /**
+   * Unified submission creation.
+   * Can create a new essay OR use an existing one (essayId).
+   */
+  async createSubmission(
+    userId: string, 
+    contextId: string, 
+    source: 'community' | 'explore',
+    essayData?: { title: string, content: string },
+    essayId?: string
+  ) {
+    
+    if (source === 'community') {
+        const topic = await this.store.getCommunityTopic(contextId);
+        if (!topic) throw new Error("NOT_FOUND");
+        if (!topic.isActive) throw new Error("TOPIC_CLOSED");
 
-    const member = await this.store.getCommunityMember(topic.communityId, userId);
-    if (!member) throw new Error("FORBIDDEN");
+        const member = await this.store.getCommunityMember(topic.communityId, userId);
+        if (!member) throw new Error("FORBIDDEN");
+    } 
 
-    const existing = await this.store.getTopicSubmission(topicId, userId);
+    const existing = await this.store.getTopicSubmission(contextId, userId, source);
     if (existing) throw new Error("ALREADY_SUBMITTED");
 
     const { username, displayName } = await this.getUserIdentity(userId);
-    const wordCount = essayData.content.trim().split(/\s+/).filter(w => w.length > 0).length;
 
     return this.txManager.transaction(async (tx) => {
-        const essay = await this.essayStore.createEssay({
-            title: essayData.title,
-            content: essayData.content,
-            authorId: userId,
-            authorName: displayName || "Anonymous",
-            wordCount,
-            isPublic: false
-        }, tx);
+        let finalEssayId = essayId;
+        let finalEssay = null;
+
+        if (essayData) {
+            const wordCount = essayData.content.trim().split(/\s+/).filter(w => w.length > 0).length;
+            finalEssay = await this.essayStore.createEssay({
+                title: essayData.title,
+                content: essayData.content,
+                authorId: userId,
+                authorName: displayName || "Anonymous",
+                wordCount,
+                isPublic: false
+            }, tx);
+            finalEssayId = finalEssay.id;
+        }
+
+        if (!finalEssayId) throw new Error("ESSAY_REQUIRED");
 
         const submission = await this.store.createTopicSubmission({
-            essayId: essay.id,
-            topicId,
+            essayId: finalEssayId,
             userId,
-            username: username || "unknown"
+            username: username || "unknown",
+            source: source,
+            topicId: source === 'community' ? contextId : null,
+            exploreContentId: source === 'explore' ? contextId : null,
         }, tx);
 
-        return { ...submission, essay };
+        return { ...submission, essay: finalEssay };
     });
   }
 
