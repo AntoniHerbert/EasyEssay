@@ -126,7 +126,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 useEffect(() => {
     if (!essayId && !essay && !templateDismissed) {
       const storedTemplate = localStorage.getItem("selectedTemplate");
-      let dataTitle = prefillTitle;
+      let dataTitle = source === 'explore' ? "" : prefillTitle;
       let dataContent = prefillContent;
 
       if (storedTemplate) {
@@ -156,7 +156,7 @@ useEffect(() => {
         }
       }
     }
-  }, [prefillTitle, prefillContent, essayId, essay, title, content, templateDismissed]);
+  }, [prefillTitle, prefillContent, essayId, essay, title, content, templateDismissed, source]);
 
   useEffect(() => {
     if (!essayId) {
