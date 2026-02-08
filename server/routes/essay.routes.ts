@@ -136,7 +136,10 @@ router.post("/batch-analyze", catchAsync(async (req, res) => {
  * Single Essay Analysis
  */
 router.post("/:id/analyze", catchAsync(async (req, res) => {
-  const result = await aiService.analyzeEssay(req.params.id);
+  const { language } = req.body;
+
+  const result = await essayService.analyzeEssay(req.params.id, language);
+  
   if (!result) {
     return res.status(404).json({ message: "Essay not found" });
   }

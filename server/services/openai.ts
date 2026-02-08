@@ -45,12 +45,22 @@ export async function analyzeEssayWithOpenAI(
   title: string, 
   content: string, 
   rubric?: RubricCategory[],
-  essayType?: string
+  essayType?: string,
+  feedbackLanguage: string = "pt-BR"
 ): Promise<AIReviewResult> {
 
   const model = process.env.AI_MODEL || "gpt-4o";
   const hasCustomRubric = rubric && rubric.length > 0;
   const currentGenre = essayType || "argumentative";
+
+  const languageMap: Record<string, string> = {
+    'pt-BR': 'Portuguese (Português do Brasil)',
+    'en': 'English',
+    'es': 'Spanish',
+    'fr': 'French',
+  };
+
+  const targetLangName = languageMap[feedbackLanguage] || 'Portuguese (Português do Brasil)';
 
   let rubricInstructions = "";
   let categoriesList: string[] = [];
@@ -88,8 +98,9 @@ export async function analyzeEssayWithOpenAI(
           - If "reflective": Focus on personal insight and connection.
 
           LANGUAGE INSTRUCTIONS:
-          - **All comments and feedback text MUST be in Portuguese (Português do Brasil).**
+          - **All comments and feedback text MUST be in ${targetLangName}.** <--- MUDANÇA AQUI
           - **JSON Keys and Category Names MUST remain in English (matching the rubric provided).**
+          - Even if the essay is written in a different language, explain the corrections in ${targetLangName}.
 
           MODERATION GUIDE:
           - Check for hate speech, explicit violence, etc. Set "isOffensive" to true if found.

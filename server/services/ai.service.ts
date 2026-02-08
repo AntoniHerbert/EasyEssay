@@ -16,7 +16,7 @@ export class AiService {
   /**
    * Analisa uma única redação.
    */
-  async analyzeEssay(essayId: string) {
+  async analyzeEssay(essayId: string, language: string = "pt-BR") {
     const essay = await this.essayStore.getEssay(essayId);
     if (!essay) return null;
 
@@ -25,7 +25,8 @@ export class AiService {
         essay.title, 
         essay.content, 
         essay.rubric || undefined,
-        essay.rubricName || "argumentative" 
+        essay.rubricName || "argumentative",
+        language 
     );
     
     return await this.peerReviewStore.getPeerReview(essay.id, "AI");
@@ -51,7 +52,8 @@ export class AiService {
             essay.title, 
             essay.content,
             essay.rubric || undefined,
-            essay.rubricName || "argumentative"
+            essay.rubricName || "argumentative",
+            "pt-BR" 
         );
         stats.success++;
       } catch (error) {
@@ -70,10 +72,11 @@ export class AiService {
       essayId: string, 
       title: string, 
       content: string, 
-      rubric?: RubricCategory[],
-      essayType?: string
+      rubric: RubricCategory[] | undefined,
+      essayType: string | undefined,
+      language: string 
   ) {
-    const aiReview = await this.fetchReviewData(title, content, rubric, essayType);
+    const aiReview = await this.fetchReviewData(title, content, rubric, essayType, language);
     
     console.log(`[AiService] Analysis result for ${essayId}: Offensive=${aiReview.isOffensive}`);
 
@@ -121,15 +124,16 @@ export class AiService {
   private async fetchReviewData(
     title: string, 
     content: string, 
-    rubric?: RubricCategory[], 
-    essayType?: string
+    rubric: RubricCategory[] | undefined, 
+    essayType: string | undefined,
+    language: string
   ): Promise<AIReviewResult> {
     const useRealAi = process.env.NODE_ENV === 'production' || process.env.USE_REAL_AI === 'true';
 
     if (useRealAi) {
       try {
-        console.log(`[AiService] Calling OpenAI (${essayType})...`);
-        return await analyzeEssayWithOpenAI(title, content, rubric, essayType);
+        console.log(`[AiService] Calling OpenAI (${essayType}) Language: ${language}...`);
+        return await analyzeEssayWithOpenAI(title, content, rubric, essayType, language); 
       } catch (error) {
         console.error("[AiService] AI API failed, falling back to mock:", error);
         return this.getMockData(title, content, rubric);

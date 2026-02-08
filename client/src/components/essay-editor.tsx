@@ -42,6 +42,7 @@ interface TemplatePart {
 
 export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
   const { t } = useTranslation();
+  const { i18n } = useTranslation();
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -245,7 +246,9 @@ useEffect(() => {
 
   const analyzeEssayMutation = useMutation({
     mutationFn: async (data: { id: string }) => {
-      return apiRequest("POST", `/api/essays/${data.id}/analyze`);
+      return apiRequest("POST", `/api/essays/${data.id}/analyze`, {
+        language: i18n.language
+      });
     },
     onSuccess: async (response, variables) => {
       const aiReview = await response.json();

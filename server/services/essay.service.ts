@@ -22,6 +22,16 @@ export class EssayService {
     private txManager: ITransactionManager 
   ) {}
 
+  async analyzeEssay(essayId: string, language: string = "pt-BR") {
+    const essay = await this.essayStore.getEssay(essayId);
+    
+    if (!essay) throw new Error("ESSAY_NOT_FOUND");
+    if (!essay.title || !essay.content) throw new Error("CONTENT_REQUIRED");
+
+    return this.aiService.analyzeEssay(essayId, language);
+  }
+
+
   async getEssays(
     requestingUserId: string | undefined,
     isPublicString?: string, 
