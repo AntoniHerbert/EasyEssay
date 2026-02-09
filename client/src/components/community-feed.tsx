@@ -159,12 +159,17 @@ export function CommunityFeed() {
     isFetchingNextPage: isFetchingNextEssays, 
     isLoading: essaysLoading 
   } = useInfiniteQuery<EssayPage>({
-    queryKey: ["/api/essays", "public", selectedTopic, sortBy],
+    queryKey: ["/api/essays", "public", selectedTopic, sortBy], 
     initialPageParam: null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       params.append("isPublic", "true");
+      
+      if (selectedTopic !== "all") {
+        params.append("q", selectedTopic);
+      }
+
       if (pageParam) params.append("cursor", pageParam as string);
       
       const res = await apiRequest("GET", `/api/essays?${params.toString()}`);
@@ -406,20 +411,10 @@ export function CommunityFeed() {
     },
   });
 
-  const getAvatarImage = (authorName: string) => {
-    const avatars = [
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-    ];
-    const hash = authorName.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return avatars[hash % avatars.length];
-  };
-
   const getTopicBadge = (title: string, content: string) => {
     const text = (title + " " + content).toLowerCase();
     
-    if (text.includes("technology") || text.includes("ai") || text.includes("computer") || text.includes("digital")) {
+    if (text.includes("technology") || text.includes("AI") || text.includes("computer") || text.includes("digital")) {
       return { key: "technology", color: "bg-primary/10 text-primary" };
     } else if (text.includes("environment") || text.includes("climate") || text.includes("sustainability")) {
       return { key: "environment", color: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100" };
