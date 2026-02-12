@@ -270,7 +270,8 @@ library: {
   status: {
     published: "Published",
     analyzed: "Analyzed",
-    draft: "Draft"
+    draft: "Draft",
+    submitted: "Submitted"
   },
   card: {
     words: "{{count}} words",

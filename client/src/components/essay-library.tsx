@@ -37,6 +37,7 @@ interface EssayLibraryProps {
 interface EnrichedEssay extends Essay {
   communityId?: string | null;
   communityName?: string | null;
+  topicId?: string | null;
   topicTitle?: string | null;
 }
 
@@ -173,7 +174,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
     },
   });
 
-  const getStatusBadge = (essay: EnrichedEssay) => {
+const getStatusBadge = (essay: EnrichedEssay) => {
     if (essay.isPublic) {
       return (
         <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 text-xs rounded-full">
@@ -181,21 +182,32 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
           {t('library.status.published')}
         </span>
       );
-    } else if (essay.isAnalyzed) {
+    } 
+    
+    if (essay.isAnalyzed) {
       return (
         <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100 text-xs rounded-full">
           <Check className="w-3 h-3 mr-1 inline" />
           {t('library.status.analyzed')}
         </span>
       );
-    } else {
+    } 
+
+    if (essay.topicId || essay.communityId) {
       return (
-        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100 text-xs rounded-full">
-          <Clock className="w-3 h-3 mr-1 inline" />
-          {t('library.status.draft')}
+        <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100 text-xs rounded-full">
+          <Users className="w-3 h-3 mr-1 inline" />
+          {t('library.status.submitted', 'Enviado')}
         </span>
       );
     }
+
+    return (
+      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100 text-xs rounded-full">
+        <Clock className="w-3 h-3 mr-1 inline" />
+        {t('library.status.draft')}
+      </span>
+    );
   };
 
   const getCommunityBadge = (essay: EnrichedEssay) => {
@@ -280,7 +292,7 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
           ))}
         </div>
         
-        {/* Dropdown de filtro por comunidade (Aparece apenas na aba Communities) */}
+        {/* Dropdown de filtro por comunidade */}
         {activeFilter === "communities" && communitiesList.length > 0 && (
           <Select value={communityFilter} onValueChange={setCommunityFilter}>
             <SelectTrigger className="w-[200px]" data-testid="select-community-filter">
@@ -393,25 +405,27 @@ export function EssayLibrary({ onEditEssay }: EssayLibraryProps) {
                   </div>
                   
                   <div className="flex items-center justify-between mt-auto">
-                  {/* Badges na esquerda com wrap para segurança */}
                     <div className="flex flex-wrap gap-2">
                       {getStatusBadge(essay)}
                       {getCommunityBadge(essay)}
                     </div>
 
-                    {/* Botão de Ação na direita */}
                     <div>
-                      {essay.isAnalyzed ? (
-                        <Link href={`/essay/${essay.id}`}>
-                          <Button variant="secondary" size="sm">
-                            <Eye className="w-4 h-4 mr-1" /> {t('library.card.view')}
+                      {(() => {
+                        const isDraft = !essay.isAnalyzed && !essay.communityId && !essay.topicId;
+
+                        return !isDraft ? (
+                          <Link href={`/essay/${essay.id}`}>
+                            <Button variant="secondary" size="sm">
+                              <Eye className="w-4 h-4 mr-1" /> {t('library.card.view')}
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button variant="ghost" size="sm" onClick={() => onEditEssay?.(essay.id)}>
+                            <Edit className="w-4 h-4 mr-1" /> {t('library.card.edit')}
                           </Button>
-                        </Link>
-                      ) : (
-                        <Button variant="ghost" size="sm" onClick={() => onEditEssay?.(essay.id)}>
-                          <Edit className="w-4 h-4 mr-1" /> {t('library.card.edit')}
-                        </Button>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 </CardContent>

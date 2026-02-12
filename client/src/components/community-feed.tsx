@@ -796,17 +796,23 @@ export function CommunityFeed() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="text-lg font-semibold">{community.name}</h3>
-                          {community.isPublic ? (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Globe className="w-3 h-3" />
-                              {t('community_feed.communities.card.public')}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              {t('community_feed.communities.card.private')}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="flex items-center gap-1 h-6 px-1.5 sm:px-2.5">
+                                      {community.isPublic ? (
+                                        <>
+                                          <Globe className="w-3.5 h-3.5" />
+                                          <span className="hidden sm:inline ml-1 text-[10px] sm:text-xs">
+                                            {t('community_feed.communities.card.public')}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Lock className="w-3.5 h-3.5" />
+                                          <span className="hidden sm:inline ml-1 text-[10px] sm:text-xs">
+                                            {t('community_feed.communities.card.private')}
+                                          </span>
+                                        </>
+                                      )}
+                                    </Badge>
                           {isLeader && (
                             <Badge variant="secondary" className="flex items-center gap-1">
                               <Crown className="w-3 h-3" />
@@ -831,31 +837,43 @@ export function CommunityFeed() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                         {!isMember && (
                           hasPendingRequest(community.id) ? (
                             <Button
                               size="sm"
                               variant="outline"
                               disabled
+                              className="flex items-center gap-1"
                               data-testid={`button-pending-${community.id}`}
                             >
-                              <Clock className="w-4 h-4 mr-1" />
-                              {t('community_feed.communities.card.pending')}
+                              <Clock className="w-4 h-4" />
+                              <span className="hidden sm:inline">
+                                {t('community_feed.communities.card.pending')}
+                              </span>
                             </Button>
                           ) : (
                             <Button
                               size="sm"
                               onClick={() => joinCommunityMutation.mutate(community.id)}
                               disabled={joinCommunityMutation.isPending}
+                              className="flex items-center gap-1"
                               data-testid={`button-join-${community.id}`}
                             >
-                              <UserPlus className="w-4 h-4 mr-1" />
-                              {community.isPublic ? t('community_feed.communities.card.join') : t('community_feed.communities.card.request_join')}
+                              {joinCommunityMutation.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <UserPlus className="w-4 h-4" />
+                              )}
+                              <span className="hidden sm:inline">
+                                {community.isPublic 
+                                  ? t('community_feed.communities.card.join') 
+                                  : t('community_feed.communities.card.request_join')}
+                              </span>
                             </Button>
                           )
                         )}
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
                       </div>
                     </div>
                   </CardContent>
@@ -896,6 +914,88 @@ export function CommunityFeed() {
     const isLeader = membership?.role === 'leader';
     const isMember = !!membership;
 
+    const transferButtonAction = selectedCommunity.leaderId === user?.id && (
+  <Dialog open={transferLeadershipDialogOpen} onOpenChange={setTransferLeadershipDialogOpen}>
+    <DialogTrigger asChild>
+      <Button 
+        variant="outline" 
+        size="sm"
+        className="flex items-center gap-2 w-full sm:w-auto"
+        data-testid="button-transfer-leadership"
+      >
+        <Crown className="w-4 h-4" />
+        <span>{t('community_feed.detail.transfer_leadership')}</span>
+      </Button>
+    </DialogTrigger>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{t('community_feed.dialogs.transfer.title')}</DialogTitle>
+        <DialogDescription>
+          {t('community_feed.dialogs.transfer.desc')}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3 max-h-60 overflow-y-auto">
+        {communityMembers
+          .filter((m: CommunityMember) => m.userId !== user?.id)
+          .map((member: CommunityMember) => (
+            <div 
+              key={member.id} 
+              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                selectedNewLeader === member.userId ? 'bg-primary/10 border border-primary' : 'bg-muted/50 hover:bg-muted'
+              }`}
+              onClick={() => setSelectedNewLeader(member.userId)}
+            >
+              <Avatar className="w-8 h-8">
+                <AvatarFallback>
+                  {member.username ? member.username.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-medium">{member.username}</p>
+              </div>
+              {selectedNewLeader === member.userId && <Check className="w-5 h-5 text-primary" />}
+            </div>
+          ))}
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setTransferLeadershipDialogOpen(false)}>
+          {t('community_feed.dialogs.transfer.cancel')}
+        </Button>
+        <Button 
+          onClick={() => {
+            if (selectedNewLeader) {
+              transferLeadershipMutation.mutate({ communityId: selectedCommunity.id, newLeaderId: selectedNewLeader });
+              setTransferLeadershipDialogOpen(false);
+              setSelectedNewLeader(null);
+            }
+          }}
+          disabled={!selectedNewLeader || transferLeadershipMutation.isPending}
+        >
+          {t('community_feed.dialogs.transfer.confirm')}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
+const leaveButtonAction = isMember && !isLeader && (
+  <Button 
+    variant="outline" 
+    size="sm"
+    className="flex items-center gap-2 w-full sm:w-auto"
+    onClick={() => leaveCommunityMutation.mutate(selectedCommunity.id)}
+    disabled={leaveCommunityMutation.isPending}
+    data-testid="button-leave-community"
+  >
+    {leaveCommunityMutation.isPending ? (
+      <Loader2 className="w-4 h-4 animate-spin" />
+    ) : (
+      <LogOut className="w-4 h-4" />
+    )}
+    <span>{t('community_feed.detail.leave')}</span>
+  </Button>
+);
+
     return (
       <div>
         <Button 
@@ -908,139 +1008,75 @@ export function CommunityFeed() {
           {t('community_feed.communities.back_btn')}
         </Button>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-2xl">{selectedCommunity.name}</CardTitle>
-                  {isLeader && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Crown className="w-3 h-3" />
-                      {t('community_feed.detail.leader_badge')}
-                    </Badge>
-                  )}
-                </div>
-                <CardDescription className="mt-2">
-                  {selectedCommunity.description || "No description"}
-                </CardDescription>
-                {selectedCommunity.code && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-sm text-muted-foreground">{t('community_feed.detail.share_code')}</span>
-                    <Badge 
-                      variant="outline" 
-                      className="font-mono text-base cursor-pointer hover:bg-accent"
-                      onClick={() => {
-                        navigator.clipboard.writeText(selectedCommunity.code);
-                        setCodeCopied(true);
-                        setTimeout(() => setCodeCopied(false), 2000);
-                        toast({
-                          title: t('community_feed.detail.code_copied'),
-                          description: t('community_feed.detail.code_copied_desc'),
-                        });
-                      }}
-                      data-testid="badge-community-code"
-                    >
-                      {selectedCommunity.code}
-                      {codeCopied ? (
-                        <Check className="w-3 h-3 ml-1 text-green-500" />
-                      ) : (
-                        <Copy className="w-3 h-3 ml-1" />
-                      )}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {selectedCommunity.leaderId === user?.id && (
-                  <Dialog open={transferLeadershipDialogOpen} onOpenChange={setTransferLeadershipDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        data-testid="button-transfer-leadership"
-                      >
-                        <Crown className="w-4 h-4 mr-1" />
-                        {t('community_feed.detail.transfer_leadership')}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{t('community_feed.dialogs.transfer.title')}</DialogTitle>
-                        <DialogDescription>
-                          {t('community_feed.dialogs.transfer.desc')}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {communityMembers.filter((m: CommunityMember) => m.userId !== user?.id).map((member: CommunityMember) => (
-                          <div 
-                            key={member.id} 
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedNewLeader === member.userId ? 'bg-primary/10 border border-primary' : 'bg-muted/50 hover:bg-muted'}`}
-                            onClick={() => setSelectedNewLeader(member.userId)}
-                            data-testid={`select-new-leader-${member.userId}`}
-                          >
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback>{member.username ? member.username.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??'}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <p className="font-medium">{member.username}</p>
-                              {member.role === 'leader' && (
-                                <p className="text-xs text-muted-foreground">{t('community_feed.detail.leader_badge')}</p>
-                              )}
-                            </div>
-                            {selectedNewLeader === member.userId && (
-                              <Check className="w-5 h-5 text-primary" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setTransferLeadershipDialogOpen(false)}>
-                          {t('community_feed.dialogs.transfer.cancel')}
-                        </Button>
-                        <Button 
-                          onClick={() => {
-                            if (selectedNewLeader) {
-                              transferLeadershipMutation.mutate({ communityId: selectedCommunity.id, newLeaderId: selectedNewLeader });
-                              setTransferLeadershipDialogOpen(false);
-                              setSelectedNewLeader(null);
-                            }
-                          }}
-                          disabled={!selectedNewLeader || transferLeadershipMutation.isPending}
-                          data-testid="button-confirm-transfer"
-                        >
-                          {t('community_feed.dialogs.transfer.confirm')}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-                {isMember && !isLeader && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => leaveCommunityMutation.mutate(selectedCommunity.id)}
-                    disabled={leaveCommunityMutation.isPending}
-                    data-testid="button-leave-community"
-                  >
-                    <LogOut className="w-4 h-4 mr-1" />
-                    {t('community_feed.detail.leave')}
-                  </Button>
-                )}
-              </div>
+
+
+  <Card className="mb-6">
+    <CardHeader>
+      <div className="flex items-start justify-between flex-nowrap gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-2xl truncate">{selectedCommunity.name}</CardTitle>
+            {isLeader && (
+              <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                <Crown className="w-3 h-3" />
+                {t('community_feed.detail.leader_badge')}
+              </Badge>
+            )}
+          </div>
+          <CardDescription className="mt-2 line-clamp-2">
+            {selectedCommunity.description || "No description"}
+          </CardDescription>
+
+          {selectedCommunity.code && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-muted-foreground hidden xs:inline">
+                {t('community_feed.detail.share_code')}
+              </span>
+              <Badge 
+                variant="outline" 
+                className="font-mono text-base cursor-pointer hover:bg-accent shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedCommunity.code);
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 2000);
+                  toast({ title: t('community_feed.detail.code_copied') });
+                }}
+              >
+                {selectedCommunity.code}
+                {codeCopied ? <Check className="w-3 h-3 ml-1 text-green-500" /> : <Copy className="w-3 h-3 ml-1" />}
+              </Badge>
             </div>
-            <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{t('community_feed.communities.card.members_count', { count: selectedCommunity.memberCount })}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Crown className="w-4 h-4" />
-                <span>{t('community_feed.communities.card.led_by', { name: selectedCommunity.leaderName })}</span>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+          )}
+        </div>
+
+        <div className="hidden sm:block shrink-0">
+          {transferButtonAction}
+          {leaveButtonAction}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 mt-4 pt-4 border-t">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span>{t('community_feed.communities.card.members_count', { count: selectedCommunity.memberCount })}</span>
+          </div>
+          <div className="flex items-center gap-1 min-w-0">
+            <Crown className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('community_feed.communities.card.led_by', { name: selectedCommunity.leaderName })}</span>
+          </div>
+        </div>
+
+        <div className="sm:hidden flex flex-col gap-2">
+          {transferButtonAction}
+          {leaveButtonAction}
+          
+
+        </div>
+      </div>
+    </CardHeader>
+  </Card>
+
 
         {isLeader && !selectedCommunity.isPublic && (
           <Card className="mb-6">
@@ -1069,26 +1105,30 @@ export function CommunityFeed() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => approveRequestMutation.mutate({ communityId: selectedCommunity.id, requestId: request.id })}
-                          disabled={approveRequestMutation.isPending}
-                          data-testid={`button-approve-${request.id}`}
-                        >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          {t('community_feed.detail.approve')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => rejectRequestMutation.mutate({ communityId: selectedCommunity.id, requestId: request.id })}
-                          disabled={rejectRequestMutation.isPending}
-                          data-testid={`button-reject-${request.id}`}
-                        >
-                          <UserX className="w-4 h-4 mr-1" />
-                          {t('community_feed.detail.reject')}
-                        </Button>
+<Button
+          size="sm"
+          variant="outline"
+          onClick={() => approveRequestMutation.mutate({ communityId: selectedCommunity.id, requestId: request.id })}
+          disabled={approveRequestMutation.isPending}
+          data-testid={`button-approve-${request.id}`}
+        >
+          <UserCheck className="w-4 h-4 sm:mr-1" />
+          <span className="hidden sm:inline">
+            {t('community_feed.detail.approve')}
+          </span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => rejectRequestMutation.mutate({ communityId: selectedCommunity.id, requestId: request.id })}
+          disabled={rejectRequestMutation.isPending}
+          data-testid={`button-reject-${request.id}`}
+        >
+          <UserX className="w-4 h-4 sm:mr-1" />
+          <span className="hidden sm:inline">
+            {t('community_feed.detail.reject')}
+          </span>
+        </Button>
                       </div>
                     </div>
                   ))}

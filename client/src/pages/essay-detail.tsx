@@ -104,7 +104,6 @@ export default function EssayDetail() {
 
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
 
-  // Sincronização Inicial de Dados (Recupera rascunho ao abrir)
   useEffect(() => {
     if (reviews.length > 0 && user?.id) {
       const currentUserReview = reviews.find(r => r.reviewerId === user.id);
@@ -129,7 +128,6 @@ export default function EssayDetail() {
     }
   }, [reviews, user?.id]);
 
-  // Sincronização de Rubricas Iniciais se for nova
   useEffect(() => {
     if (hasCustomRubric && REVIEW_CATEGORIES.length > 0 && Object.keys(rubricScores).length === 0) {
       const initialRubricScores: Record<string, number> = {};
@@ -141,7 +139,6 @@ export default function EssayDetail() {
     }
   }, [hasCustomRubric, REVIEW_CATEGORIES]);
 
-  // Mutações
   const getOrCreateReviewMutation = useMutation({
     mutationFn: async () => {
       const rubricScoresArray = hasCustomRubric 
@@ -209,7 +206,6 @@ export default function EssayDetail() {
     if (reviews.length > 0) fetchLikes();
   }, [reviews, reviewLikes]);
 
-  // Handlers
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().trim()) {
@@ -363,6 +359,9 @@ export default function EssayDetail() {
     ? REVIEW_CATEGORIES.reduce((sum, cat) => sum + (cat.maxScore || 200), 0)
     : 1200;
 
+  const aiReview = reviews.find(r => r.reviewerId === "AI");
+  const humanReviewsCount = essayData?.reviewCount || 0;
+
   let headerScore = 0;
   let headerLabel = "";
 
@@ -374,8 +373,15 @@ export default function EssayDetail() {
     headerScore = myCurrentScore;
     headerLabel = t('essay_detail.scores.current_score');
   } else {
-    headerScore = essayData?.averageScore || 0;
-    headerLabel = essayData?.reviewCount > 0 ? t('essay_detail.scores.average', { count: essayData.reviewCount }) : t('essay_detail.scores.no_reviews');
+    if ((essayData?.averageScore || 0) === 0 && aiReview) {
+      headerScore = aiReview.overallScore;
+      headerLabel = t('essay_detail.comments.ai_label');
+    } else {
+      headerScore = essayData?.averageScore || 0;
+      headerLabel = humanReviewsCount > 0 
+        ? t('essay_detail.scores.average', { count: humanReviewsCount }) 
+        : (aiReview ? t('essay_detail.comments.ai_label') : t('essay_detail.scores.no_reviews'));
+    }
   }
 
   return (
