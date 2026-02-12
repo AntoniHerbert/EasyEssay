@@ -72,7 +72,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     enabled: !!topicId && source !== 'explore',
   });
 
-  const { data: essay } = useQuery({
+  const { data: essay } = useQuery<Essay>({
     queryKey: [`/api/essays/${essayId}`],
     enabled: !!essayId,
   });
@@ -88,6 +88,15 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
       if (savedEssayType && ESSAY_TYPES.includes(savedEssayType as EssayType)) {
         setSelectedEssayType(savedEssayType as EssayType);
       }
+
+      if (essay.rubric && essay.rubricName && essay.rubricName !== "Standard") {
+        setSelectedRubric({
+          name: essay.rubricName,
+          categories: essay.rubric as RubricCategory[],
+          essayType: savedEssayType || null
+        });
+      }
+
       onEssayChange?.(essay as Essay);
     }
   }, [essay, onEssayChange]);
@@ -134,7 +143,6 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
           const parsed = JSON.parse(storedTemplate);
           if (parsed.title) dataTitle = parsed.title;
           if (parsed.content) dataContent = parsed.content;
-          
           localStorage.removeItem("selectedTemplate");
         } catch (e) {
           console.error("Failed to parse selectedTemplate", e);
@@ -147,7 +155,6 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
       if (dataContent && !content) {
         const hasPlaceholders = /\[[^\]]+\]/.test(dataContent);
-        
         if (hasPlaceholders) {
           setTemplateMode(true);
           setTemplateParts(parseTemplateContent(dataContent));
@@ -203,15 +210,9 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
   const wordCount = (templateMode ? buildContentFromTemplate : content).trim().split(/\s+/).filter(word => word.length > 0).length;
 
-  const { data: userProfile } = useQuery({
-    queryKey: [`/api/profile/${user?.id}`],
-    enabled: !!user?.id,
-  });
-
   const saveEssayMutation = useMutation({
     mutationFn: async () => {
       const finalContent = templateMode ? buildContentFromTemplate : content;
-      
       const rubric = selectedRubric ? selectedRubric.categories : DEFAULT_RUBRIC;
       const rubricName = selectedRubric ? selectedRubric.name : "Standard";
       
@@ -301,11 +302,9 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
 
     try {
       let currentEssayId = essayId;
-      
       const rubric = selectedRubric ? selectedRubric.categories : DEFAULT_RUBRIC;
       const rubricName = selectedRubric ? selectedRubric.name : "Standard";
-      
-      const essayData: Record<string, unknown> = {
+      const essayData = {
         title: title || t('editor.untitled'),
         content: finalContent,
         isPublic: false,
@@ -558,7 +557,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
               disabled={isAnalyzing || !selectedEssayType || !(templateMode ? buildContentFromTemplate : content).trim()}
               data-testid="button-analyze"
             >
-              <Wand2 className="w-4 h-4 mr-2" />
+              < Wand2 className="w-4 h-4 mr-2" />
               {isAnalyzing ? t('editor.analyzing') : t('editor.analyze')}
             </Button>
           </div>
