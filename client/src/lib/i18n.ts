@@ -91,6 +91,7 @@ en: {
 editor: {
   topic_description: "Topic Description",
   header: "Essay Editor",
+  saving: "Saving...",
   save: "Save",
   words: "{{count}} words",
   analyze: "Analyze",
@@ -236,7 +237,11 @@ explore: {
     incomplete: "Incomplete",
     incomplete_desc: "Please fill in all required fields.",
     topic_loaded: "Topic loaded",
-    topic_loaded_desc: "Start writing your essay on this topic!"
+    topic_loaded_desc: "Start writing your essay on this topic!",
+    template_loaded: "Template loaded",
+    template_loaded_desc: "Fill in the template to write your essay!",
+    rubric_selected: "Rubric selected",
+    rubric_desc: "Your essay will be scored on: {{categories}}"
   }
 }, 
 library: {
@@ -776,6 +781,7 @@ login: {
   },},
 editor: {
   topic_description: "Descrição do Tópico",
+  saving: "Salvando...",
   header: "Editor",
   words: "{{count}} palavras",
   analyze: "Analisar",
@@ -922,7 +928,11 @@ explore: {
     incomplete: "Incompleto",
     incomplete_desc: "Por favor, preencha todos os campos obrigatórios.",
     topic_loaded: "Tópico carregado",
-    topic_loaded_desc: "Comece a escrever sua redação sobre este tópico!"
+    topic_loaded_desc: "Comece a escrever sua redação sobre este tópico!",
+    template_loaded: "Modelo carregado",
+    template_loaded_desc: "Preencha o modelo para escrever sua redação!",
+    rubric_selected: "Rubrica selecionada",
+    rubric_desc: "Sua redação será avaliada em: {{categories}}"
   }
 },
 library: {
