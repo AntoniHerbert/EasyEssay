@@ -459,6 +459,7 @@ export const categoryItemSchema = z.object({
 
 export const categoryListPayloadSchema = z.object({
   categories: z.array(categoryItemSchema).min(1),
+  essayType: z.enum(ESSAY_TYPES),
 });
 
 export const essayTopicPayloadSchema = z.object({

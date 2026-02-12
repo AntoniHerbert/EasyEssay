@@ -18,14 +18,18 @@ const colorClass = "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-p
 
 const handleUseCategory = (item: ExploreItem, utils: Pick<PluginUtils, "navigate" | "toast">) => {
   const payload = item.payload as CategoryListPayload;
+  const effectiveEssayType = payload.essayType || null;
+
   localStorage.setItem("selectedRubric", JSON.stringify({
     name: item.title,
     categories: payload.categories,
-    essayType: item.essayType || null,
+    essayType: effectiveEssayType,
   }));
-  if (item.essayType) {
-    localStorage.setItem("selectedEssayType", item.essayType);
+  
+  if (effectiveEssayType) {
+    localStorage.setItem("selectedEssayType", effectiveEssayType);
   }
+
   utils.toast({
     title: i18n.t('explore.toast.rubric_selected'),
     description: i18n.t('explore.toast.rubric_desc', { 
@@ -40,9 +44,11 @@ const getInitials = (name: string) => {
 };
 
 const CategoryListCard = ({ item, utils }: CardProps) => {
-  const { t } = useTranslation(); // <--- Hook
+  const { t } = useTranslation();
   const payload = item.payload as CategoryListPayload;
   const totalScore = payload.categories.reduce((sum, c) => sum + c.maxScore, 0);
+  
+  const essayType = payload.essayType;
 
   return (
     <Card
@@ -56,9 +62,9 @@ const CategoryListCard = ({ item, utils }: CardProps) => {
               <ListChecks className="w-3 h-3 mr-1" />
               {t('explore.types.category_list')}
             </Badge>
-            {item.essayType && (
+            {essayType && (
               <Badge variant="outline" className="text-xs">
-                {t(`editor.types.${item.essayType}`)}
+                {t(`editor.types.${essayType}`)}
               </Badge>
             )}
           </div>
@@ -126,14 +132,15 @@ const CategoryListCard = ({ item, utils }: CardProps) => {
 const CategoryListDetail = ({ item, utils, isOwner }: DetailProps) => {
   const { t } = useTranslation();
   const payload = item.payload as CategoryListPayload;
+  const essayType = payload.essayType;
 
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {item.essayType && (
+        {essayType && (
           <div className="flex items-center gap-2 pb-2 border-b border-border">
             <span className="text-sm text-muted-foreground">{t('explore.create.labels.essay_type_optional').replace('(Optional)', '').trim()}:</span>
-            <Badge variant="outline">{t(`editor.types.${item.essayType}`)}</Badge>
+            <Badge variant="outline">{t(`editor.types.${essayType}`)}</Badge>
           </div>
         )}
         <div className="space-y-2">
@@ -267,6 +274,7 @@ export const CategoryListPlugin: ExplorePlugin<CategoryListPayload> = {
   },
   buildPayload: (formData) => ({
     categories: formData.categories || [],
+    essayType: formData.essayType || undefined,
   }),
   onUse: handleUseCategory,
 };

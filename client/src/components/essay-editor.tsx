@@ -401,6 +401,8 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     }
   };
 
+  const isEssayTypeLocked = !!(selectedRubric && selectedRubric.essayType);
+
   return (
     <Card className="rounded-xl shadow-sm border border-border overflow-hidden">
       {topicId && (source === 'explore' || topic) && (
@@ -452,7 +454,7 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         <Select 
           value={selectedEssayType} 
           onValueChange={(v) => setSelectedEssayType(v as EssayType)}
-          disabled={!!selectedRubric}
+          disabled={isEssayTypeLocked}
         >
           <SelectTrigger className="w-[200px]" data-testid="select-essay-type">
             <SelectValue placeholder={t('editor.essay_type_select')} />
