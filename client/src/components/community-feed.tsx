@@ -349,10 +349,10 @@ export function CommunityFeed() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "join-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "members"] });
-      toast({ title: t('community_feed.toast.req_approved'), description: "The user has been added to the community." });
+      toast({ title: t('community_feed.toast.req_approved'), description: t('community_feed.toast.req_approved_desc') });
     },
     onError: () => {
-      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to approve request.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: t('community_feed.toast.approve_failed_desc'), variant: "destructive" });
     },
   });
 
@@ -362,10 +362,10 @@ export function CommunityFeed() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/communities", selectedCommunity?.id, "join-requests"] });
-      toast({ title: t('community_feed.toast.req_rejected'), description: "The join request has been rejected." });
+      toast({ title: t('community_feed.toast.req_rejected'), description: t('community_feed.toast.req_rejected_desc') });
     },
     onError: () => {
-      toast({ title: t('community_feed.toast.action_failed'), description: "Failed to reject request.", variant: "destructive" });
+      toast({ title: t('community_feed.toast.action_failed'), description: t('community_feed.toast.reject_failed_desc'), variant: "destructive" });
     },
   });
 
