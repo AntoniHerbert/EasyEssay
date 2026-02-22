@@ -237,14 +237,15 @@ export function ExploreFeed() {
     
     return (
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
             <DialogTitle>{t('explore.create.title')}</DialogTitle>
             <DialogDescription>{t('explore.create.desc')}</DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className="flex-1 overflow-y-auto p-6 pt-0 custom-scrollbar">
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
               <Label>{t('explore.create.labels.type')}</Label>
               <Select value={createType} onValueChange={(v) => {
                 setCreateType(v as ExploreContentType);
@@ -291,13 +292,16 @@ export function ExploreFeed() {
               </div>
             )}
             
-            <ActivePlugin.CreateFormComponent 
-              onChange={handlePayloadChange} 
-              initialData={creationPayload}
-            />
+            <div className="pt-2 border-t border-border mt-4">
+               <ActivePlugin.CreateFormComponent 
+                onChange={handlePayloadChange} 
+                initialData={creationPayload}
+              />
+            </div>
           </div>
+        </div>
           
-          <DialogFooter>
+          <DialogFooter className="p-6 pt-2 border-t bg-background">
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               {t('explore.create.cancel')}
             </Button>
