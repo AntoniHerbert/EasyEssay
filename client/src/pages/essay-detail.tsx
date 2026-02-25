@@ -17,6 +17,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { type Essay, type PeerReview, type ReviewCategory, type CorrectionObject, PeerReviewWithProfile } from "@shared/schema";
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import { DesktopReviewDrawer } from "../components/DesktopReviewDrawer"; 
+import { MobileReviewDrawer } from "../components/MobileReviewDrawer";
+
 const RUBRIC_COLORS = [
   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -38,6 +42,8 @@ export default function EssayDetail() {
   const { user } = useAuth();
   const [match, params] = useRoute("/essay/:id");
   const essayId = params?.id;
+
+  const isMobile = useIsMobile();
 
   const [selectedText, setSelectedText] = useState("");
   const [selectionRange, setSelectionRange] = useState<{start: number; end: number} | null>(null);
@@ -174,7 +180,7 @@ export default function EssayDetail() {
     }
   });
 
-const addCorrectionMutation = useMutation({
+  const addCorrectionMutation = useMutation({
     mutationFn: async (data: { reviewId: string; [key: string]: any }) => {
       const { reviewId, ...payload } = data;
       
@@ -245,7 +251,7 @@ const addCorrectionMutation = useMutation({
     }
   };
 
-const handleSubmitCorrection = async () => {
+  const handleSubmitCorrection = async () => {
     if (!correctionComment.trim()) {
       toast({
         title: t('essay_detail.toast.missing_info'),
@@ -442,8 +448,177 @@ const handleSubmitCorrection = async () => {
     }
   }
 
-  return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6">
+  // --- COMPONENTE ISOLADO DO PAINEL DE REVISÃO ---
+const ReviewFormContent = (
+    <div className="space-y-4">
+      {isAuthor ? (
+        <Card className="border-0 shadow-none">
+          <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5" />{t('essay_detail.panel.your_essay_title')}</CardTitle></CardHeader>
+          <CardContent><div className="text-sm text-muted-foreground text-center py-8"><p className="mb-2">{t('essay_detail.panel.this_is_your_essay')}</p><p>{t('essay_detail.panel.your_essay_desc')}</p></div></CardContent>
+        </Card>
+      ) : (
+        <Card className="border-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5" />{t('essay_detail.panel.peer_review_title')}</CardTitle>
+            <div className="mt-3 space-y-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{t('essay_detail.panel.progress', { reviewed: reviewedCategoriesCount, total: REVIEW_CATEGORIES.length })}</span>
+                <span>{Math.round(reviewProgress)}%</span>
+              </div>
+              <Progress value={reviewProgress} className="h-2" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 h-auto">
+                {REVIEW_CATEGORIES.map((cat) => (
+                  <TabsTrigger key={cat.key} value={cat.key} className="text-xs py-2 relative" data-testid={`tab-${cat.key}`}>
+                    <span className="flex items-center gap-1">
+                      {cat.label.split(' ')[0]}
+                      {isCategoryReviewed(String(cat.key)) && <CheckCircle2 className="w-3 h-3 text-green-600" />}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {REVIEW_CATEGORIES.map((category) => {
+                const cMax = category.maxScore || 200;
+                const cScore = hasCustomRubric ? (rubricScores[category.key] ?? Math.floor(cMax / 2)) : (categoryScores[category.key] ?? 100);
+                return (
+                  <TabsContent key={category.key} value={category.key} className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-semibold">{category.label}</div>
+                          <div className="text-xs text-muted-foreground">{category.description}</div>
+                        </div>
+                        <Badge className={category.color}>{cScore}/{cMax}</Badge>
+                      </div>
+                      <Slider
+                        value={[cScore]}
+                        max={cMax}
+                        min={0}
+                        step={Math.max(1, Math.floor(cMax / 20))}
+                        className="w-full"
+                        disabled={isReviewSubmitted}
+                        onValueChange={(val) => !isReviewSubmitted && (hasCustomRubric ? setRubricScores(p => ({ ...p, [category.key]: val[0] })) : setCategoryScores(p => ({ ...p, [category.key]: val[0] })))}
+                        data-testid={`slider-${category.key}`}
+                      />
+                    </div>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="text-xs text-muted-foreground">{t('essay_detail.panel.comment_instruction')}</div>
+                      {selectedText && <div className="p-3 bg-muted rounded-lg"><div className="text-sm font-medium mb-1">{t('essay_detail.comments.selected_text_label')}</div><div className="text-sm italic">"{selectedText}"</div></div>}
+                      <Textarea value={correctionComment} onChange={(e) => setCorrectionComment(e.target.value)} placeholder={isReviewSubmitted ? t('essay_detail.panel.placeholder_locked') : t('essay_detail.panel.placeholder_active')} className="min-h-[80px]" disabled={isReviewSubmitted} data-testid={`comment-${category.key}`} />
+                      <Button onClick={handleSubmitCorrection} disabled={isReviewSubmitted || !correctionComment.trim() || addCorrectionMutation.isPending} className="w-full" size="sm" data-testid={`add-correction-${category.key}`}>
+                        {addCorrectionMutation.isPending ? t('essay_detail.panel.btn_adding') : isReviewSubmitted ? t('essay_detail.panel.btn_submitted') : t('essay_detail.panel.btn_add')}
+                      </Button>
+                    </div>
+                    {getCategoryCorrections(String(category.key)).length > 0 && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">{t('essay_detail.comments.your_comments')} ({getCategoryCorrections(String(category.key)).length})</div>
+                          {getCategoryCorrections(String(category.key)).map((correction, idx) => (
+                            <div key={idx} className="p-2 bg-muted/50 rounded text-xs">
+                              {correction.selectedText && <div className="italic mb-1">"{correction.selectedText}"</div>}
+                              <div className="text-muted-foreground">{correction.comment}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+            <div className="mt-6 pt-4 border-t space-y-3">
+              <div className="text-center">
+                <div className="text-xl font-bold text-primary">{headerScore}/{maxScore}</div>
+                <div className="text-xs text-muted-foreground">{t('essay_detail.scores.overall')} ({Math.round((headerScore / maxScore) * 100)}%)</div>
+              </div>
+              {isReviewSubmitted ? <div className="text-xs text-green-600 text-center font-medium">{t('essay_detail.panel.msg_locked')}</div> : !allCategoriesReviewed ? <div className="text-xs text-destructive text-center">{t('essay_detail.panel.msg_incomplete')}</div> : null}
+              <Button onClick={handleSubmitReview} disabled={isReviewSubmitted || !allCategoriesReviewed || getOrCreateReviewMutation.isPending} className="w-full" data-testid="submit-review">
+                {isReviewSubmitted ? t('essay_detail.panel.submit_locked') : getOrCreateReviewMutation.isPending ? t('essay_detail.panel.submit_loading') : t('essay_detail.panel.submit_action')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // 2. APENAS A LISTA DE REVIEWS DA COMUNIDADE
+const CommunityReviewsList = reviews.length > 0 ? (
+    // Restauramos as classes padrão do Card (fundo branco/escuro, bordas e sombras)
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Users className="w-5 h-5" />{t('essay_detail.community_reviews.title')} ({reviews.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {reviews.map((review) => {
+            const isActive = viewingReviewId === review.id;
+            const isAI = review.reviewerId === "AI";
+            return (
+              <div key={review.id} className={`p-3 border rounded-lg cursor-pointer transition-all bg-card ${isActive ? 'border-primary bg-primary/5' : 'hover:border-primary/50'} ${isAI ? 'border-blue-300 dark:border-blue-700' : ''}`} onClick={() => setViewingReviewId(isActive ? null : review.id)} data-testid={`review-card-${review.id}`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    {isAI ? (
+                      <><span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">🤖 {t('essay_detail.comments.ai_label')}</span>{isActive && <span className="text-primary">({t('essay_detail.comments.viewing')})</span>}</>
+                    ) : (
+                      <>{t('essay_detail.comments.reviewer')} {getReviewerName(review)} {isActive && <span className="text-primary">({t('essay_detail.comments.viewing')})</span>}</>
+                    )}
+                  </div>
+                  <Badge variant={isActive ? "default" : "outline"}>{hasCustomRubric ? (review.rubricScores ? `${review.rubricScores.reduce((s, r) => s + r.score, 0)}/${maxScore}` : `${review.overallScore}/${maxScore}`) : `${review.overallScore}/1200`}</Badge>
+                </div>
+                {hasCustomRubric ? (
+                  review.rubricScores ? (
+                    <div className="grid grid-cols-2 gap-1 text-xs mb-2">
+                      {review.rubricScores.map((rs, idx) => (
+                        <div key={idx} className="truncate" title={rs.categoryName}>{rs.categoryName}: {rs.score}/{rs.maxScore}</div>
+                      ))}
+                    </div>
+                  ) : <div className="text-xs text-muted-foreground mb-2">{t('essay_detail.scores.custom_missing')}</div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1 text-xs mb-2">
+                    <div>{t('essay_detail.categories.grammar.label').split(' ')[0]}: {review.grammarScore}/200</div>
+                    <div>{t('essay_detail.categories.style.label').split(' ')[0]}: {review.styleScore}/200</div>
+                    <div>{t('essay_detail.categories.clarity.label').split(' ')[0]}: {review.clarityScore}/200</div>
+                    <div>{t('essay_detail.categories.structure.label').split(' ')[0]}: {review.structureScore}/200</div>
+                    <div>{t('essay_detail.categories.content.label').split(' ')[0]}: {review.contentScore}/200</div>
+                    <div>{t('essay_detail.categories.research.label').split(' ')[0]}: {review.researchScore}/200</div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  {review.corrections.length > 0 && <div className="text-xs text-muted-foreground">{t('essay_detail.comments.count', { count: review.corrections.length })}</div>}
+                  {!review.corrections.length && <div />}
+                  <Button variant="ghost" size="sm" className={`h-7 px-2 ${reviewLikes[review.id]?.isLiked ? 'text-red-500' : 'text-muted-foreground'}`} onClick={(e) => { e.stopPropagation(); toggleReviewLikeMutation.mutate(review.id); }} disabled={toggleReviewLikeMutation.isPending} data-testid={`button-like-review-${review.id}`}>
+                    <Heart className={`w-4 h-4 mr-1 ${reviewLikes[review.id]?.isLiked ? 'fill-current' : ''}`} />
+                    <span className="text-xs">{reviewLikes[review.id]?.count || 0}</span>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          {hasNextPage && (
+            <div className="flex justify-center mt-4 pt-2 border-t">
+              <Button variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage} size="sm" className="w-full">
+                {isFetchingNextPage ? (<><Loader2 className="mr-2 h-3 w-3 animate-spin" />{t('essay_detail.community_reviews.loading_more')}</>) : t('essay_detail.community_reviews.load_older')}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  ) : null;
+
+return (
+  <div className="min-h-screen flex flex-col relative pb-[200px] md:pb-8">
+    
+    {/* CABEÇALHO */}
+    <div className="max-w-7xl w-full mx-auto p-4 md:p-6 pb-0">
       <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-x-4 gap-y-2 mb-6">
         <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="shrink-0">
           <ArrowLeft className="w-4 h-4" />
@@ -480,247 +655,117 @@ const handleSubmitCorrection = async () => {
           <div className="text-sm text-muted-foreground">{headerLabel}</div>
         </div>
       </div>
+    </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>{t('essay_detail.content.title')}</CardTitle>
-                {viewingReviewId && (
-                  <Button variant="outline" size="sm" onClick={() => setViewingReviewId(null)} data-testid="clear-highlights">
-                    {t('essay_detail.content.clear_highlights')}
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div id="essay-content" className="prose dark:prose-invert max-w-none break-words leading-relaxed whitespace-pre-wrap cursor-text" onMouseUp={handleTextSelection} onTouchEnd={handleTextSelection} data-testid="essay-content">
-                {essayData?.content && renderHighlightedText(essayData.content)}
-              </div>
-            </CardContent>
-          </Card>
+    {/* ÁREA PRINCIPAL: GRID CSS */}
+    <div className="max-w-7xl w-full mx-auto px-4 md:px-6 flex-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-6 items-start pb-8">
+      
+      {/* LINHA 1, COLUNA 1: Texto da Redação */}
+      <div className="row-start-1 col-start-1 min-w-0">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('essay_detail.content.title')}</CardTitle>
+              {viewingReviewId && (
+                <Button variant="outline" size="sm" onClick={() => setViewingReviewId(null)} data-testid="clear-highlights">
+                  {t('essay_detail.content.clear_highlights')}
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div id="essay-content" className="prose dark:prose-invert max-w-none break-words leading-relaxed whitespace-pre-wrap cursor-text" onMouseUp={handleTextSelection} onTouchEnd={handleTextSelection} data-testid="essay-content">
+              {essayData?.content && renderHighlightedText(essayData.content)}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {(() => {
-            const reviewsToShow = viewingReviewId ? reviews.filter(r => r.id === viewingReviewId) : reviews;
-            const hasComments = reviewsToShow.some(r => r.corrections.length > 0);
-            if (!hasComments) return null;
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5" />
-                    {viewingReviewId ? t('essay_detail.comments.selected_title') : t('essay_detail.comments.title')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {reviewsToShow.map((review) => {
-                      if (review.corrections.length === 0) return null;
-                      return (
-                        <div key={review.id} className="space-y-3 pb-4 border-b last:border-b-0">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-sm">
-                                {t('essay_detail.comments.reviewer')}: {review.reviewerId === "AI" || review.reviewerId === user?.id ? (
-                                  getReviewerName(review)
-                                ) : (
-                                  <Link href={`/profile/${review.reviewerId}`}>
-                                    <Button variant="ghost" size="sm" className="font-medium hover:text-primary p-0 h-auto ml-1">{getReviewerName(review)}</Button>
-                                  </Link>
-                                )}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {t('essay_detail.scores.overall')}: {hasCustomRubric ? (review.rubricScores ? `${review.rubricScores.reduce((sum, rs) => sum + rs.score, 0)}/${maxScore}` : `${review.overallScore}/${maxScore}`) : `${review.overallScore}/1200`} ({t('essay_detail.comments.count', {count: review.corrections.length})})
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            {REVIEW_CATEGORIES.map((cat) => {
-                              const categoryCorrections = review.corrections.filter(c => c.category === cat.key);
-                              if (categoryCorrections.length === 0) return null;
-                              return (
-                                <div key={cat.key} className="space-y-2">
-                                  <Badge className={cat.color + " text-xs"}>{cat.label} ({categoryCorrections.length})</Badge>
-                                  <div className="space-y-2 pl-3">
-                                    {categoryCorrections.map((correction, idx) => (
-                                      <div key={idx} className="p-2 bg-muted/30 rounded text-sm" data-testid={`correction-${idx}`}>
-                                        {correction.selectedText && <div className="italic mb-1">"{correction.selectedText}"</div>}
-                                        <p className="text-muted-foreground">{correction.comment}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })()}
-        </div>
-
-        <div className="space-y-4">
-          {isAuthor ? (
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5" />{t('essay_detail.panel.your_essay_title')}</CardTitle></CardHeader>
-              <CardContent><div className="text-sm text-muted-foreground text-center py-8"><p className="mb-2">{t('essay_detail.panel.this_is_your_essay')}</p><p>{t('essay_detail.panel.your_essay_desc')}</p></div></CardContent>
-            </Card>
-          ) : (
+      {/* LINHA 2, COLUNA 1: Destaques de Erros */}
+      <div className="row-start-2 col-start-1 min-w-0 space-y-4">
+        {(() => {
+          const reviewsToShow = viewingReviewId ? reviews.filter(r => r.id === viewingReviewId) : reviews;
+          const hasComments = reviewsToShow.some(r => r.corrections.length > 0);
+          if (!hasComments) return null;
+          return (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5" />{t('essay_detail.panel.peer_review_title')}</CardTitle>
-                <div className="mt-3 space-y-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{t('essay_detail.panel.progress', { reviewed: reviewedCategoriesCount, total: REVIEW_CATEGORIES.length })}</span>
-                    <span>{Math.round(reviewProgress)}%</span>
-                  </div>
-                  <Progress value={reviewProgress} className="h-2" />
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  {viewingReviewId ? t('essay_detail.comments.selected_title') : t('essay_detail.comments.title')}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 h-auto">
-                    {REVIEW_CATEGORIES.map((cat) => (
-                      <TabsTrigger key={cat.key} value={cat.key} className="text-xs py-2 relative" data-testid={`tab-${cat.key}`}>
-                        <span className="flex items-center gap-1">
-                          {cat.label.split(' ')[0]}
-                          {isCategoryReviewed(String(cat.key)) && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                        </span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  {REVIEW_CATEGORIES.map((category) => {
-                    const cMax = category.maxScore || 200;
-                    const cScore = hasCustomRubric ? (rubricScores[category.key] ?? Math.floor(cMax / 2)) : (categoryScores[category.key] ?? 100);
+                <div className="space-y-6">
+                  {reviewsToShow.map((review) => {
+                    if (review.corrections.length === 0) return null;
                     return (
-                      <TabsContent key={category.key} value={category.key} className="space-y-4 mt-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-semibold">{category.label}</div>
-                              <div className="text-xs text-muted-foreground">{category.description}</div>
-                            </div>
-                            <Badge className={category.color}>{cScore}/{cMax}</Badge>
-                          </div>
-                          <Slider
-                            value={[cScore]}
-                            max={cMax}
-                            min={0}
-                            step={Math.max(1, Math.floor(cMax / 20))}
-                            className="w-full"
-                            disabled={isReviewSubmitted}
-                            onValueChange={(val) => !isReviewSubmitted && (hasCustomRubric ? setRubricScores(p => ({ ...p, [category.key]: val[0] })) : setCategoryScores(p => ({ ...p, [category.key]: val[0] })))}
-                            data-testid={`slider-${category.key}`}
-                          />
-                        </div>
-                        <Separator />
-                        <div className="space-y-3">
-                          <div className="text-xs text-muted-foreground">{t('essay_detail.panel.comment_instruction')}</div>
-                          {selectedText && <div className="p-3 bg-muted rounded-lg"><div className="text-sm font-medium mb-1">{t('essay_detail.comments.selected_text_label')}</div><div className="text-sm italic">"{selectedText}"</div></div>}
-                          <Textarea value={correctionComment} onChange={(e) => setCorrectionComment(e.target.value)} placeholder={isReviewSubmitted ? t('essay_detail.panel.placeholder_locked') : t('essay_detail.panel.placeholder_active')} className="min-h-[80px]" disabled={isReviewSubmitted} data-testid={`comment-${category.key}`} />
-                          <Button onClick={handleSubmitCorrection} disabled={isReviewSubmitted || !correctionComment.trim() || addCorrectionMutation.isPending} className="w-full" size="sm" data-testid={`add-correction-${category.key}`}>
-                            {addCorrectionMutation.isPending ? t('essay_detail.panel.btn_adding') : isReviewSubmitted ? t('essay_detail.panel.btn_submitted') : t('essay_detail.panel.btn_add')}
-                          </Button>
-                        </div>
-                        {getCategoryCorrections(String(category.key)).length > 0 && (
-                          <>
-                            <Separator />
-                            <div className="space-y-2">
-                              <div className="text-sm font-medium">{t('essay_detail.comments.your_comments')} ({getCategoryCorrections(String(category.key)).length})</div>
-                              {getCategoryCorrections(String(category.key)).map((correction, idx) => (
-                                <div key={idx} className="p-2 bg-muted/50 rounded text-xs">
-                                  {correction.selectedText && <div className="italic mb-1">"{correction.selectedText}"</div>}
-                                  <div className="text-muted-foreground">{correction.comment}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </TabsContent>
-                    );
-                  })}
-                </Tabs>
-                <div className="mt-6 pt-4 border-t space-y-3">
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-primary">{headerScore}/{maxScore}</div>
-                    <div className="text-xs text-muted-foreground">{t('essay_detail.scores.overall')} ({Math.round((headerScore / maxScore) * 100)}%)</div>
-                  </div>
-                  {isReviewSubmitted ? <div className="text-xs text-green-600 text-center font-medium">{t('essay_detail.panel.msg_locked')}</div> : !allCategoriesReviewed ? <div className="text-xs text-destructive text-center">{t('essay_detail.panel.msg_incomplete')}</div> : null}
-                  <Button onClick={handleSubmitReview} disabled={isReviewSubmitted || !allCategoriesReviewed || getOrCreateReviewMutation.isPending} className="w-full" data-testid="submit-review">
-                    {isReviewSubmitted ? t('essay_detail.panel.submit_locked') : getOrCreateReviewMutation.isPending ? t('essay_detail.panel.submit_loading') : t('essay_detail.panel.submit_action')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {reviews.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Users className="w-5 h-5" />{t('essay_detail.community_reviews.title')} ({reviews.length})</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {reviews.map((review) => {
-                    const isActive = viewingReviewId === review.id;
-                    const isAI = review.reviewerId === "AI";
-                    return (
-                      <div key={review.id} className={`p-3 border rounded-lg cursor-pointer transition-all ${isActive ? 'border-primary bg-primary/5' : 'hover:border-primary/50'} ${isAI ? 'border-blue-300 dark:border-blue-700' : ''}`} onClick={() => setViewingReviewId(isActive ? null : review.id)} data-testid={`review-card-${review.id}`}>
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="text-sm font-medium flex items-center gap-2">
-                            {isAI ? (
-                              <><span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">🤖 {t('essay_detail.comments.ai_label')}</span>{isActive && <span className="text-primary">({t('essay_detail.comments.viewing')})</span>}</>
+                      <div key={review.id} className="space-y-3 pb-4 border-b last:border-b-0">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium text-sm">
+                            {t('essay_detail.comments.reviewer')}: {review.reviewerId === "AI" || review.reviewerId === user?.id ? (
+                              getReviewerName(review)
                             ) : (
-                              <>{t('essay_detail.comments.reviewer')} {getReviewerName(review)} {isActive && <span className="text-primary">({t('essay_detail.comments.viewing')})</span>}</>
+                              <Link href={`/profile/${review.reviewerId}`}>
+                                <Button variant="ghost" size="sm" className="font-medium hover:text-primary p-0 h-auto ml-1">{getReviewerName(review)}</Button>
+                              </Link>
                             )}
                           </div>
-                          <Badge variant={isActive ? "default" : "outline"}>{hasCustomRubric ? (review.rubricScores ? `${review.rubricScores.reduce((s, r) => s + r.score, 0)}/${maxScore}` : `${review.overallScore}/${maxScore}`) : `${review.overallScore}/1200`}</Badge>
-                        </div>
-                        {hasCustomRubric ? (
-                          review.rubricScores ? (
-                            <div className="grid grid-cols-2 gap-1 text-xs mb-2">
-                              {review.rubricScores.map((rs, idx) => (
-                                <div key={idx} className="truncate" title={rs.categoryName}>{rs.categoryName}: {rs.score}/{rs.maxScore}</div>
-                              ))}
-                            </div>
-                          ) : <div className="text-xs text-muted-foreground mb-2">{t('essay_detail.scores.custom_missing')}</div>
-                        ) : (
-                          <div className="grid grid-cols-3 gap-1 text-xs mb-2">
-                            <div>{t('essay_detail.categories.grammar.label').split(' ')[0]}: {review.grammarScore}/200</div>
-                            <div>{t('essay_detail.categories.style.label').split(' ')[0]}: {review.styleScore}/200</div>
-                            <div>{t('essay_detail.categories.clarity.label').split(' ')[0]}: {review.clarityScore}/200</div>
-                            <div>{t('essay_detail.categories.structure.label').split(' ')[0]}: {review.structureScore}/200</div>
-                            <div>{t('essay_detail.categories.content.label').split(' ')[0]}: {review.contentScore}/200</div>
-                            <div>{t('essay_detail.categories.research.label').split(' ')[0]}: {review.researchScore}/200</div>
+                          <div className="text-xs text-muted-foreground">
+                            {t('essay_detail.scores.overall')}: {hasCustomRubric ? (review.rubricScores ? `${review.rubricScores.reduce((sum, rs) => sum + rs.score, 0)}/${maxScore}` : `${review.overallScore}/${maxScore}`) : `${review.overallScore}/1200`}
                           </div>
-                        )}
-                        <div className="flex items-center justify-between mt-2">
-                          {review.corrections.length > 0 && <div className="text-xs text-muted-foreground">{t('essay_detail.comments.count', { count: review.corrections.length })}</div>}
-                          {!review.corrections.length && <div />}
-                          <Button variant="ghost" size="sm" className={`h-7 px-2 ${reviewLikes[review.id]?.isLiked ? 'text-red-500' : 'text-muted-foreground'}`} onClick={(e) => { e.stopPropagation(); toggleReviewLikeMutation.mutate(review.id); }} disabled={toggleReviewLikeMutation.isPending} data-testid={`button-like-review-${review.id}`}>
-                            <Heart className={`w-4 h-4 mr-1 ${reviewLikes[review.id]?.isLiked ? 'fill-current' : ''}`} />
-                            <span className="text-xs">{reviewLikes[review.id]?.count || 0}</span>
-                          </Button>
+                        </div>
+                        <div className="space-y-3">
+                          {REVIEW_CATEGORIES.map((cat) => {
+                            const categoryCorrections = review.corrections.filter(c => c.category === cat.key);
+                            if (categoryCorrections.length === 0) return null;
+                            return (
+                              <div key={cat.key} className="space-y-2">
+                                <Badge className={cat.color + " text-xs"}>{cat.label}</Badge>
+                                <div className="space-y-2 pl-3">
+                                  {categoryCorrections.map((correction, idx) => (
+                                    <div key={idx} className="p-2 bg-muted/30 rounded text-sm">
+                                      {correction.selectedText && <div className="italic mb-1">"{correction.selectedText}"</div>}
+                                      <p className="text-muted-foreground">{correction.comment}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
                   })}
-                  {hasNextPage && (
-                    <div className="flex justify-center mt-4 pt-2 border-t">
-                      <Button variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage} size="sm" className="w-full">
-                        {isFetchingNextPage ? (<><Loader2 className="mr-2 h-3 w-3 animate-spin" />{t('essay_detail.community_reviews.loading_more')}</>) : t('essay_detail.community_reviews.load_older')}
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
-          )}
+          );
+        })()}
+
+        {/* Comunidade no Mobile */}
+        <div className="md:hidden mt-4">
+          {CommunityReviewsList}
         </div>
       </div>
+
+      {/* COLUNA 2: Injetamos o Drawer que gerencia as posições sobrepostas */}
+      {!isMobile && (
+        <DesktopReviewDrawer 
+          reviewForm={ReviewFormContent}
+          communityReviews={CommunityReviewsList}
+        />
+      )}
+
     </div>
-  );
+
+    {/* DRAWER MOBILE */}
+    {isMobile && (
+      <MobileReviewDrawer>
+        {ReviewFormContent}
+      </MobileReviewDrawer>
+    )}
+
+  </div>
+);
 }
