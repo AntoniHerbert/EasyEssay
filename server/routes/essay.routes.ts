@@ -4,6 +4,7 @@ import { validateBody } from "./middlewares/validation";
 import { createEssayDTO, updateEssayDTO } from "@shared/schema"; 
 import { catchAsync } from "./middlewares/errorHandler";
 import { isAuthenticated } from "./middlewares/isAuthenticated";
+import { peerReviewStore } from "server/storage";
 
 const router = Router();
 
@@ -49,7 +50,16 @@ router.get("/:id", catchAsync(async (req, res) => {
     if (!essay) {
       return res.status(404).json({ message: "Essay not found" });
     }
-    res.json(essay);
+
+    const realTimeStats = await peerReviewStore.getEssayStats(essay.id);
+    
+    const liveEssay = {
+      ...essay,
+      reviewCount: realTimeStats.count,
+      averageScore: realTimeStats.average
+    };
+
+    res.json(liveEssay);
 
   } catch (error: any) {
     if (error.message === "FORBIDDEN_ACCESS") {

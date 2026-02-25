@@ -7,7 +7,7 @@ export interface IPeerReviewStore {
   getPeerReviewById(id: string): Promise<PeerReview | undefined>;
   createPeerReview(review: InsertPeerReview, tx?: Tx): Promise<PeerReview>;
   updatePeerReview(id: string, updates: Partial<InsertPeerReview>, tx?: Tx): Promise<PeerReview | undefined>;
-  addCorrectionToReview(reviewId: string, correction: CorrectionObject, tx?: Tx): Promise<PeerReview | undefined>;
+  addCorrectionToReview(reviewId: string, correction: CorrectionObject, updates?: Partial<InsertPeerReview>, tx?: Tx): Promise<PeerReview | undefined>;
   deleteByEssayId(essayId: string, tx?: Tx): Promise<void>;
   getEssayStats(essayId: string, tx?: Tx): Promise<{ count: number; average: number }>;
   getLikeCount(reviewId: string): Promise<number>;

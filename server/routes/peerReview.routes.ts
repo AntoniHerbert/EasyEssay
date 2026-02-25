@@ -41,7 +41,7 @@ router.patch("/:id", validateBody(updatePeerReviewSchema), catchAsync(async (req
  * Adiciona uma correção inline específica a uma revisão (peer review)
  * que ainda não foi submetida.
  */
-router.post("/:id/corrections", validateBody(addCorrectionSchema), catchAsync(async (req, res) => {
+router.post("/:id/corrections", catchAsync(async (req, res) => {
   try {
       const review = await peerReviewService.addCorrection(
         req.params.id,

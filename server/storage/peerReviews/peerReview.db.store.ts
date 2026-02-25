@@ -1,6 +1,6 @@
 import { ITransactionManager, type DrizzleDb } from "../index";
 import * as schema from "@shared/schema";
-import { eq, and, desc, count, avg, lt, getTableColumns } from "drizzle-orm"; 
+import { eq, and, desc, count, avg, lt, getTableColumns, or } from "drizzle-orm"; 
 import { type PeerReview, type InsertPeerReview, type CorrectionObject, type RubricScore } from "@shared/schema";
 import { IPeerReviewStore } from "./peerReview.store";
 import { type Tx } from "../types"; 
@@ -19,7 +19,15 @@ export class PeerReviewDbStore implements IPeerReviewStore {
         average: avg(schema.peerReviews.overallScore)
       })
       .from(schema.peerReviews)
-      .where(eq(schema.peerReviews.essayId, essayId));
+      .where(
+        and(
+          eq(schema.peerReviews.essayId, essayId),
+          or(
+            eq(schema.peerReviews.isSubmitted, true),
+            eq(schema.peerReviews.reviewerId, "AI")
+          )
+        )
+      );
 
     const stats = result[0];
     
@@ -78,7 +86,7 @@ export class PeerReviewDbStore implements IPeerReviewStore {
   async getPeerReview(essayId: string, reviewerId: string): Promise<schema.PeerReviewWithProfile | undefined> {
     const result = await this.db
       .select({
-        ...schema.peerReviews,
+        ...getTableColumns(schema.peerReviews),
         reviewerName: schema.userProfiles.displayName,
       })
       .from(schema.peerReviews)
@@ -93,7 +101,7 @@ export class PeerReviewDbStore implements IPeerReviewStore {
   async getPeerReviewById(id: string): Promise<schema.PeerReviewWithProfile | undefined> {
     const result = await this.db
       .select({
-        ...schema.peerReviews,
+        ...getTableColumns(schema.peerReviews),
         reviewerName: schema.userProfiles.displayName,
       })
       .from(schema.peerReviews)
@@ -137,16 +145,27 @@ export class PeerReviewDbStore implements IPeerReviewStore {
     return result[0];
   }
 
-  async addCorrectionToReview(reviewId: string, correction: CorrectionObject, tx?: Tx): Promise<PeerReview | undefined> {
+  async addCorrectionToReview(reviewId: string, correction: CorrectionObject, updates?: Partial<InsertPeerReview>, tx?: Tx): Promise<PeerReview | undefined> {
     const executor = (tx || this.db) as DrizzleDb;
 
     const review = await this.getPeerReviewById(reviewId); 
     if (!review) return undefined;
     
     const corrections = [...(review.corrections as CorrectionObject[] || []), correction];
+
+    const setValues: any = {
+        ...updates,
+        corrections: corrections as any, 
+        updatedAt: new Date() 
+    };
+
+    if (updates?.rubricScores) {
+      setValues.rubricScores = updates.rubricScores as schema.RubricScore[];
+    }
+
     const result = await executor
       .update(schema.peerReviews)
-      .set({ corrections: corrections as any, updatedAt: new Date() })
+      .set(setValues)
       .where(eq(schema.peerReviews.id, reviewId))
       .returning();
     return result[0];

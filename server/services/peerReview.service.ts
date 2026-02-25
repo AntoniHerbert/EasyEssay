@@ -142,8 +142,39 @@ export class PeerReviewService {
          throw new Error(`INVALID_RUBRIC_CATEGORY: "${data.category}"`);
       }
     }
+
+    const { 
+      category, 
+      selectedText, 
+      textStartIndex, 
+      textEndIndex, 
+      comment, 
+      ...scores
+    } = data;
+
+    const correction = { 
+      category, 
+      selectedText, 
+      textStartIndex, 
+      textEndIndex, 
+      comment 
+    };
+
+    return await this.txManager.transaction(async (tx) => {
+      const updated = await this.peerReviewStore.addCorrectionToReview(
+        reviewId, 
+        correction, 
+        scores, 
+        tx
+      );
+
+      if (updated) {
+        await this.updateEssayStats(updated.essayId, tx);
+      }
+
+      return updated;
+    });
     
-    return await this.peerReviewStore.addCorrectionToReview(reviewId, data);
   }
 
   /**

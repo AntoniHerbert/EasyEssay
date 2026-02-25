@@ -233,7 +233,10 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     },
     onSuccess: async (response) => {
       const savedEssay = await response.json();
-      queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
+      if (essayId) {
+        await queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}`] });
+      }
       onEssayChange?.(savedEssay);
       toast({
         title: t('editor.toast.saved_title'),
@@ -257,8 +260,9 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
     },
     onSuccess: async (response, variables) => {
       const aiReview = await response.json();
-      queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}/peer-reviews`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}`] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}/peer-reviews`] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}`] });
       
       toast({
         title: t('editor.toast.analysis_complete'),
@@ -357,16 +361,18 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         ? `/api/explore/${topicId}/submissions` 
         : `/api/topics/${topicId}/submissions`;
 
-      await apiRequest("POST", endpoint, {
+      const response = await apiRequest("POST", endpoint, {
         title: title || t('editor.untitled'),
         content: finalContent,
         essayType: selectedEssayType,
       });
       
-      queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
+      const submittedEssay = await response.json();
+      
+      await queryClient.invalidateQueries({ queryKey: ["/api/essays"] });
       
       if (source !== 'explore') {
-        queryClient.invalidateQueries({ queryKey: ["/api/topics", topicId, "submissions"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/topics", topicId, "submissions"] });
       }
       
       toast({
@@ -374,13 +380,19 @@ export function EssayEditor({ essayId, onEssayChange }: EssayEditorProps) {
         description: t('editor.toast.submitted_desc'),
       });
 
-      setTimeout(() => {
-        if (source === 'explore') {
-            setLocation('/?section=explore');
-        } else {
-            setLocation(`/?section=community&communityId=${communityId}`);
-        }
-      }, 1000);
+      const actualEssayId = submittedEssay.essayId || submittedEssay.essay?.id || submittedEssay.id;
+
+      if (source === 'explore' && actualEssayId) {
+        await analyzeEssayMutation.mutateAsync({ id: actualEssayId });
+      } else {
+        setTimeout(() => {
+          if (source === 'explore') {
+              setLocation('/?section=explore');
+          } else {
+              setLocation(`/?section=community&communityId=${communityId}`);
+          }
+        }, 1500);
+      }
     } catch (error) {
       toast({
         title: t('editor.toast.submit_failed_title'),

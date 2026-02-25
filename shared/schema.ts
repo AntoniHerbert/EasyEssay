@@ -202,7 +202,7 @@ export const reviewCategoriesEnum = pgEnum('review_category', [
 
 
 export const correctionSchema = z.object({
-  category: z.enum(['grammar', 'style', 'clarity', 'structure', 'content', 'research']),
+  category: z.string(),
   selectedText: z.string(),
   textStartIndex: z.number(),
   textEndIndex: z.number(),

@@ -77,7 +77,15 @@ export default function EssayDetail() {
     },
   });
 
-  const reviews = useMemo(() => reviewsData?.pages.flatMap((page) => page.data) || [], [reviewsData]);
+  const reviews = useMemo(() => {
+    const allReviews = reviewsData?.pages.flatMap((page) => page.data) || [];
+    
+    return allReviews.filter(review => 
+      review.isSubmitted === true || 
+      review.reviewerId === user?.id || 
+      review.reviewerId === "AI"
+    );
+  }, [reviewsData, user?.id]);
 
   const essayData = essay as Essay;
   const hasCustomRubric = essayData?.rubric && essayData.rubric.length > 0;
@@ -166,17 +174,31 @@ export default function EssayDetail() {
     }
   });
 
-  const addCorrectionMutation = useMutation({
-    mutationFn: async (data: { reviewId: string; correction: CorrectionObject }) => {
-      return apiRequest("POST", `/api/peer-reviews/${data.reviewId}/corrections`, data.correction);
+const addCorrectionMutation = useMutation({
+    mutationFn: async (data: { reviewId: string; [key: string]: any }) => {
+      const { reviewId, ...payload } = data;
+      
+      return apiRequest("POST", `/api/peer-reviews/${reviewId}/corrections`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}/peer-reviews`] });
       queryClient.invalidateQueries({ queryKey: [`/api/essays/${essayId}`] });
+      
       setSelectedText("");
       setSelectionRange(null);
       setCorrectionComment("");
-      toast({ title: t('essay_detail.toast.comment_added'), description: t('essay_detail.toast.comment_saved') });
+      
+      toast({
+        title: t('essay_detail.toast.comment_added'),
+        description: t('essay_detail.toast.comment_saved'),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: t('essay_detail.toast.submit_failed'),
+        description: error.message || t('common.try_again'),
+        variant: "destructive",
+      });
     }
   });
 
@@ -223,28 +245,64 @@ export default function EssayDetail() {
     }
   };
 
-  const handleSubmitCorrection = async () => {
+const handleSubmitCorrection = async () => {
     if (!correctionComment.trim()) {
-      toast({ title: t('essay_detail.toast.missing_info'), description: t('essay_detail.toast.missing_comment'), variant: "destructive" });
+      toast({
+        title: t('essay_detail.toast.missing_info'),
+        description: t('essay_detail.toast.missing_comment'),
+        variant: "destructive",
+      });
       return;
     }
+
     try {
-      let rId = activeReviewId;
-      if (!rId) {
+      let reviewId: string = activeReviewId || "";
+      if (!reviewId) {
         const review = await getOrCreateReviewMutation.mutateAsync();
-        rId = review.id;
+        reviewId = review.id;
+        setActiveReviewId(review.id);
       }
+
+      const currentScores = hasCustomRubric 
+        ? {
+            rubricScores: REVIEW_CATEGORIES.map(cat => ({
+              categoryName: String(cat.key),
+              score: rubricScores[cat.key] ?? Math.floor((cat.maxScore || 200) / 2),
+              maxScore: cat.maxScore || 200,
+            }))
+          }
+        : {
+            grammarScore: categoryScores.grammar,
+            styleScore: categoryScores.style,
+            clarityScore: categoryScores.clarity,
+            structureScore: categoryScores.structure,
+            contentScore: categoryScores.content,
+            researchScore: categoryScores.research,
+          };
+      
       await addCorrectionMutation.mutateAsync({
-        reviewId: rId!,
-        correction: {
-          category: activeCategory as ReviewCategory,
-          selectedText,
-          textStartIndex: selectionRange?.start || 0,
-          textEndIndex: selectionRange?.end || 0,
-          comment: correctionComment,
-        }
+        reviewId,
+        ...currentScores,
+        category: activeCategory as ReviewCategory,
+        selectedText: selectedText || "",
+        textStartIndex: selectionRange?.start || 0,
+        textEndIndex: selectionRange?.end || 0,
+        comment: correctionComment,
       });
-    } catch (error) {}
+    } catch (error: any) {
+      console.error("Erro detalhado ao criar comentário/review:", error);
+      
+      let errorMessage = t('common.try_again');
+      if (error && error.message) {
+        errorMessage = error.message;
+      }
+
+      toast({
+        title: "Erro no Backend",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmitReview = async () => {

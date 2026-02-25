@@ -1,150 +1,136 @@
-import { type PeerReview, type InsertPeerReview, type CorrectionObject, type PeerReviewWithProfile, type RubricScore } from "@shared/schema";
+import { 
+  type PeerReview, 
+  type InsertPeerReview, 
+  type CorrectionObject, 
+  type RubricScore,
+  type PeerReviewWithProfile 
+} from "@shared/schema";
 import { IPeerReviewStore } from "./peerReview.store";
 import { randomUUID } from "crypto";
-import { type Tx } from "../types"; 
+import { type Tx } from "../types";
 
 export class PeerReviewMemStore implements IPeerReviewStore {
   private peerReviews: Map<string, PeerReview>;
-  private reviewLikes: Map<string, Set<string>> = new Map();
 
   constructor() {
     this.peerReviews = new Map();
   }
 
-  private toWithProfile(review: PeerReview): PeerReviewWithProfile {
+  async getEssayStats(essayId: string): Promise<{ count: number; average: number }> {
+    let count = 0;
+    let sum = 0;
+
+    this.peerReviews.forEach((r) => {
+      if (r.essayId === essayId && r.isSubmitted === true) {
+        count++;
+        sum += r.overallScore;
+      }
+    });
+
+    if (count === 0) return { count: 0, average: 0 };
+
     return {
-      ...review,
-      reviewerName: "Test User (MemStore)", 
+      count,
+      average: Math.round(sum / count),
     };
   }
 
-  async getEssayStats(essayId: string, _tx?: Tx): Promise<{ count: number; average: number }> {
-    const reviews = Array.from(this.peerReviews.values())
-      .filter(r => r.essayId === essayId);
-
-    const count = reviews.length;
-
-    if (count === 0) {
-      return { count: 0, average: 0 };
-    }
-
-    const totalScore = reviews.reduce((sum, review) => sum + review.overallScore, 0);
-    const average = Math.round(totalScore / count);
-
-    return { count, average };
-  }
-
   async getPeerReviews(essayId: string, limit = 10, cursor?: Date): Promise<PeerReviewWithProfile[]> {
-    let reviews = Array.from(this.peerReviews.values())
-      .filter(r => r.essayId === essayId);
-
-    if (cursor) {
-      reviews = reviews.filter(r => r.createdAt < cursor);
-    }
+    const reviews: PeerReview[] = [];
+    
+    this.peerReviews.forEach((r) => {
+      if (r.essayId === essayId) {
+        if (!cursor || r.createdAt < cursor) {
+          reviews.push(r);
+        }
+      }
+    });
 
     return reviews
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit)
-      .map(this.toWithProfile);
+      .map((r) => ({
+        ...r,
+        reviewerName: r.reviewerId === 'AI' ? 'AI Assistant' : 'Anonymous',
+      }));
   }
 
-  async getPeerReview(essayId: string, reviewerId: string): Promise<PeerReviewWithProfile | undefined> {
-    const review = Array.from(this.peerReviews.values()).find(
-      r => r.essayId === essayId && r.reviewerId === reviewerId
-    );
-    return review ? this.toWithProfile(review) : undefined;
+  async getPeerReview(essayId: string, reviewerId: string): Promise<PeerReview | undefined> {
+    let found: PeerReview | undefined;
+    this.peerReviews.forEach((r) => {
+      if (r.essayId === essayId && r.reviewerId === reviewerId) {
+        found = r;
+      }
+    });
+    return found;
   }
 
-  async getPeerReviewById(id: string): Promise<PeerReviewWithProfile | undefined> {
-    const review = this.peerReviews.get(id);
-    return review ? this.toWithProfile(review) : undefined;
+  async getPeerReviewById(id: string): Promise<PeerReview | undefined> {
+    return this.peerReviews.get(id);
   }
 
   async createPeerReview(review: InsertPeerReview, _tx?: Tx): Promise<PeerReview> {
+    const id = randomUUID();
     const newReview: PeerReview = {
-      id: randomUUID(),
       ...review,
-      grammarScore: review.grammarScore ?? 100,
-      styleScore: review.styleScore ?? 100,
-      clarityScore: review.clarityScore ?? 100,
-      structureScore: review.structureScore ?? 100,
-      contentScore: review.contentScore ?? 100,
-      researchScore: review.researchScore ?? 100,
-      overallScore: review.overallScore ?? 600,
-      
-      rubricScores: review.rubricScores ? (review.rubricScores as RubricScore[]) : null,
-      corrections: (review.corrections ?? []) as CorrectionObject[],
-      
-      reviewComment: review.reviewComment ?? null,
+      id,
       isSubmitted: review.isSubmitted ?? false,
+      corrections: review.corrections || [],
+      rubricScores: (review.rubricScores as RubricScore[]) || null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
-    this.peerReviews.set(newReview.id, newReview);
+    } as PeerReview;
+
+    this.peerReviews.set(id, newReview);
     return newReview;
   }
 
   async updatePeerReview(id: string, updates: Partial<InsertPeerReview>, _tx?: Tx): Promise<PeerReview | undefined> {
     const review = this.peerReviews.get(id);
-    if (review) {
-      const updatedReview: PeerReview = { 
-        ...review, 
-        ...updates,
-        rubricScores: updates.rubricScores !== undefined 
-          ? (updates.rubricScores as RubricScore[] | undefined) ?? null 
-          : review.rubricScores,
-        corrections: (updates.corrections ?? review.corrections) as CorrectionObject[],
-        updatedAt: new Date() 
-      };
-      this.peerReviews.set(id, updatedReview);
-      return updatedReview;
-    }
-    return undefined;
+    if (!review) return undefined;
+
+    const updated: PeerReview = {
+      ...review,
+      ...updates,
+      updatedAt: new Date(),
+    } as PeerReview;
+
+    this.peerReviews.set(id, updated);
+    return updated;
   }
 
-  async addCorrectionToReview(reviewId: string, correction: CorrectionObject, _tx?: Tx): Promise<PeerReview | undefined> {
+  async addCorrectionToReview(
+    reviewId: string, 
+    correction: CorrectionObject, 
+    updates?: Partial<InsertPeerReview>, 
+    _tx?: Tx
+  ): Promise<PeerReview | undefined> {
     const review = this.peerReviews.get(reviewId);
-    if (review) {
-      const updatedReview: PeerReview = {
-        ...review,
-        corrections: [...review.corrections, correction] as CorrectionObject[],
-        updatedAt: new Date()
-      };
-      this.peerReviews.set(reviewId, updatedReview);
-      return updatedReview;
-    }
-    return undefined;
+    if (!review) return undefined;
+
+    const updatedCorrections = [...(review.corrections as CorrectionObject[] || []), correction];
+    
+    const updated: PeerReview = {
+      ...review,
+      ...updates,
+      corrections: updatedCorrections,
+      updatedAt: new Date(),
+    } as PeerReview;
+
+    this.peerReviews.set(reviewId, updated);
+    return updated;
   }
 
   async deleteByEssayId(essayId: string, _tx?: Tx): Promise<void> {
-    for (const [id, review] of Array.from(this.peerReviews.entries())) {
+    this.peerReviews.forEach((review, key) => {
       if (review.essayId === essayId) {
-        this.peerReviews.delete(id);
+        this.peerReviews.delete(key);
       }
-    }
+    });
   }
 
-  async getLikeCount(reviewId: string): Promise<number> {
-    const likes = this.reviewLikes.get(reviewId);
-    return likes ? likes.size : 0;
-  }
-
-  async hasUserLiked(reviewId: string, userId: string): Promise<boolean> {
-    const likes = this.reviewLikes.get(reviewId);
-    return likes ? likes.has(userId) : false;
-  }
-
-  async addLike(reviewId: string, userId: string, _tx?: Tx): Promise<void> {
-    if (!this.reviewLikes.has(reviewId)) {
-      this.reviewLikes.set(reviewId, new Set());
-    }
-    this.reviewLikes.get(reviewId)!.add(userId);
-  }
-
-  async removeLike(reviewId: string, userId: string, _tx?: Tx): Promise<void> {
-    const likes = this.reviewLikes.get(reviewId);
-    if (likes) {
-      likes.delete(userId);
-    }
-  }
+  async getLikeCount(_reviewId: string): Promise<number> { return 0; }
+  async hasUserLiked(_reviewId: string, _userId: string): Promise<boolean> { return false; }
+  async addLike(_reviewId: string, _userId: string): Promise<void> {}
+  async removeLike(_reviewId: string, _userId: string): Promise<void> {}
 }
