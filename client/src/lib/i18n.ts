@@ -519,6 +519,7 @@ essay_detail: {
     your_comments: "Your Comments"
   },
   panel: {
+    this_is_your_essay: "This is your essay.",
     your_essay_title: "Your Essay",
     your_essay_desc: "This is your essay. You cannot review your own work, but you can see reviews from others below.",
     peer_review_title: "Peer Review",
@@ -1210,6 +1211,7 @@ essay_detail: {
     your_comments: "Seus Comentários"
   },
   panel: {
+    this_is_your_essay: "Esta é a sua redação.",
     your_essay_title: "Sua Redação",
     your_essay_desc: "Esta é sua redação. Você não pode avaliar seu próprio trabalho, mas pode ver avaliações de outros abaixo.",
     peer_review_title: "Revisão por Pares",

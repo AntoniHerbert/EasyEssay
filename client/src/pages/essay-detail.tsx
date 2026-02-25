@@ -568,7 +568,7 @@ const handleSubmitCorrection = async () => {
           {isAuthor ? (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5" />{t('essay_detail.panel.your_essay_title')}</CardTitle></CardHeader>
-              <CardContent><div className="text-sm text-muted-foreground text-center py-8"><p className="mb-2">This is your essay.</p><p>{t('essay_detail.panel.your_essay_desc')}</p></div></CardContent>
+              <CardContent><div className="text-sm text-muted-foreground text-center py-8"><p className="mb-2">{t('essay_detail.panel.this_is_your_essay')}</p><p>{t('essay_detail.panel.your_essay_desc')}</p></div></CardContent>
             </Card>
           ) : (
             <Card>
