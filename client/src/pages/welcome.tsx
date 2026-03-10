@@ -23,7 +23,7 @@ export default function Welcome() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PenTool className="w-6 h-6 text-primary" />
-            <span className="text-xl font-bold">Essay Club</span>
+            <span className="text-xl font-bold">Easy Essay</span>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={() => setLocation("/login")}>
@@ -231,7 +231,7 @@ export default function Welcome() {
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <PenTool className="w-4 h-4" />
-            <span className="text-sm">Essay Club</span>
+            <span className="text-sm">Easy Essay</span>
           </div>
           <p className="text-sm text-muted-foreground">
             {t('welcome.footer.tagline')}

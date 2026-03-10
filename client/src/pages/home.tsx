@@ -110,7 +110,7 @@ useEffect(() => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-auto min-h-16 py-2 gap-4">
             <div className="flex items-center shrink-0">
-              <h1 className="text-xl font-bold text-primary break-words leading-tight">Essay Club V1</h1>
+              <h1 className="text-xl font-bold text-primary break-words leading-tight">Easy Essay V1</h1>
             </div>
             
             {/* Desktop navigation */}

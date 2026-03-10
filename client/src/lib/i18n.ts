@@ -654,7 +654,7 @@ welcome: {
     get_started: "Get Started"
   },
   hero: {
-    badge: "AI-Powered Writing Assistant",
+    badge: "AI-Powered Writing Reviewer",
     title: "Write Better Essays,",
     title_highlight: "Together",
     subtitle: "Get instant AI feedback, discover writing resources, and collaborate with a community of writers to improve your craft.",
@@ -663,7 +663,7 @@ welcome: {
   },
   features: {
     title: "Everything You Need to Write",
-    subtitle: "From drafting to polishing, Essay AI supports your entire writing journey.",
+    subtitle: "From drafting to polishing, Easy Essay supports your entire writing journey.",
     editor: {
       title: "Smart Essay Editor",
       desc: "Write your essays with a clean, distraction-free editor. Save drafts, organize your work, and pick up right where you left off.",
@@ -1346,7 +1346,7 @@ welcome: {
     get_started: "Começar"
   },
   hero: {
-    badge: "Assistente de Escrita com IA",
+    badge: "Corretor de Escrita com IA",
     title: "Escreva Redações Melhores,",
     title_highlight: "Juntos",
     subtitle: "Receba feedback instantâneo da IA, descubra recursos de escrita e colabore com uma comunidade de escritores para melhorar sua técnica.",
@@ -1355,7 +1355,7 @@ welcome: {
   },
   features: {
     title: "Tudo o Que Você Precisa para Escrever",
-    subtitle: "Do rascunho ao polimento, o Essay AI apoia toda a sua jornada de escrita.",
+    subtitle: "Do rascunho ao polimento, o Easy Essay apoia toda a sua jornada de escrita.",
     editor: {
       title: "Editor de Redação Inteligente",
       desc: "Escreva suas redações com um editor limpo e sem distrações. Salve rascunhos, organize seu trabalho e continue de onde parou.",
