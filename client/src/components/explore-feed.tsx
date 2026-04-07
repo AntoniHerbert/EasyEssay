@@ -21,7 +21,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 type FilterType = 'all' | 'my_content' | 'saved' | ExploreContentType;
 
 export function ExploreFeed() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -90,7 +90,7 @@ export function ExploreFeed() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { type: ExploreContentType; title: string; subtitle?: string; payload: any; essayType?: string }) => {
+    mutationFn: async (data: { type: ExploreContentType; title: string; subtitle?: string; payload: any; essayType?: string; language: string }) => {
       return apiRequest("POST", "/api/explore", data);
     },
     onSuccess: () => {
@@ -164,12 +164,15 @@ export function ExploreFeed() {
       return;
     }
 
+    const currentLanguage = i18n.language ? i18n.language.split('-')[0] : 'pt';
+
     createItemMutation.mutate({
       type: createType,
       title: newTitle,
       subtitle: newSubtitle || undefined,
       payload,
       essayType: creationPayload.essayType,
+      language: currentLanguage,
     });
   };
 

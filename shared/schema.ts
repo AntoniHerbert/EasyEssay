@@ -505,6 +505,7 @@ export const exploreItems = pgTable('explore_items', {
   savesCount: integer('saves_count').notNull().default(0),
   isFeatured: boolean('is_featured').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  language: varchar('language', { length: 10 }).default('pt'),
 });
 
 export const exploreLikes = pgTable('explore_likes', {
